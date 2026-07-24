@@ -38,7 +38,7 @@ export default function PlacesList({ places, loading, error, selectedPlaceId, on
       </p>
       {places.map((place, idx) => (
         <PlaceCard
-          key={place.id || idx}
+          key={place.id}
           place={place}
           isSelected={place.id === selectedPlaceId}
           onSelect={() => onSelectPlace(place)}

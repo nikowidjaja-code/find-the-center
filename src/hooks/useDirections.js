@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { findTimeMidpoint } from '../utils/midpoint.js';
 
+const DIRECTIONS_ERRORS = {
+  NOT_FOUND: 'One or both locations could not be found.',
+  ZERO_RESULTS: 'No driving route found between these locations.',
+  INVALID_REQUEST: 'Invalid request. Try different locations.',
+  OVER_QUERY_LIMIT: 'Too many requests. Please wait and try again.',
+  REQUEST_DENIED: 'Directions request was denied.',
+  UNKNOWN_ERROR: 'An unexpected error occurred. Please try again.',
+};
+
 /**
  * Fetches driving directions between pointA and pointB using the
  * Google Maps DirectionsService, then computes the time-equidistant midpoint.
@@ -57,7 +66,7 @@ export function useDirections(pointA, pointB) {
         } else {
           setDirectionsResult(null);
           setMidpoint(null);
-          setError(`Could not get directions: ${status}`);
+          setError(DIRECTIONS_ERRORS[status] ?? `Could not get directions: ${status}`);
         }
       });
     }, 350);

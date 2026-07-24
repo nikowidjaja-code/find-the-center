@@ -240,16 +240,18 @@ export default function App() {
           {hasMidpoint && (
             <div className="px-5 py-3 border-b border-slate-100">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Search radius</span>
+                <label htmlFor="radius-slider" className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Search radius</label>
                 <span className="text-xs font-bold text-indigo-600">{radius >= 1000 ? `${(radius / 1000).toFixed(1)} km` : `${radius} m`}</span>
               </div>
               <input
+                id="radius-slider"
                 type="range"
                 min={100}
                 max={2000}
                 step={100}
                 value={radius}
                 onChange={(e) => setRadius(Number(e.target.value))}
+                aria-label="Search radius in meters"
                 className="w-full h-1.5 rounded-full accent-indigo-600 cursor-pointer"
               />
               <div className="flex justify-between text-xs text-slate-300 mt-1">

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useApiIsLoaded } from '@vis.gl/react-google-maps';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 
 /**
@@ -17,43 +18,33 @@ export default function LocationInput({ label, value, onPlace, isActive, onFocus
   const autocompleteRef = useRef(null);
   const [inputValue, setInputValue] = useState(value || '');
   const { requestLocation, loading: locLoading, error: locError } = useGeolocation();
+  const apiLoaded = useApiIsLoaded();
 
   // Keep local state in sync with external value prop
   useEffect(() => {
     setInputValue(value || '');
   }, [value]);
 
-  // Set up autocomplete once the Google Maps library is available
+  // Set up autocomplete once the Maps JS API is ready — no polling needed
   useEffect(() => {
-    const tryInit = () => {
-      if (!window.google?.maps?.places?.Autocomplete) return false;
-      if (autocompleteRef.current) return true; // already initialised
+    if (!apiLoaded || autocompleteRef.current) return;
 
-      const ac = new window.google.maps.places.Autocomplete(inputRef.current, {
-        fields: ['geometry', 'name', 'formatted_address'],
-      });
+    const ac = new window.google.maps.places.Autocomplete(inputRef.current, {
+      fields: ['geometry', 'name', 'formatted_address'],
+    });
 
-      ac.addListener('place_changed', () => {
-        const place = ac.getPlace();
-        if (!place.geometry?.location) return;
-        const lat = place.geometry.location.lat();
-        const lng = place.geometry.location.lng();
-        const name = place.name || place.formatted_address || '';
-        setInputValue(name);
-        onPlace({ lat, lng }, name);
-      });
+    ac.addListener('place_changed', () => {
+      const place = ac.getPlace();
+      if (!place.geometry?.location) return;
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      const name = place.name || place.formatted_address || '';
+      setInputValue(name);
+      onPlace({ lat, lng }, name);
+    });
 
-      autocompleteRef.current = ac;
-      return true;
-    };
-
-    if (!tryInit()) {
-      const interval = setInterval(() => {
-        if (tryInit()) clearInterval(interval);
-      }, 300);
-      return () => clearInterval(interval);
-    }
-  }, [onPlace]);
+    autocompleteRef.current = ac;
+  }, [apiLoaded, onPlace]);
 
   const handleUseLocation = () => {
     requestLocation((latLng, name) => {
@@ -97,6 +88,7 @@ export default function LocationInput({ label, value, onPlace, isActive, onFocus
           onClick={handleUseLocation}
           disabled={locLoading}
           title="Use my current location"
+          aria-label="Use my current location"
           className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 transition text-slate-500 hover:text-indigo-600 disabled:opacity-50"
         >
           {locLoading ? (
