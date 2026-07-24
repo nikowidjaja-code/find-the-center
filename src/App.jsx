@@ -233,9 +233,9 @@ export default function App() {
         </div>
       </div>
 
-      {/* Rating + Sort */}
-      <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5">
+      {/* Rating + Sort — stacked to avoid overflow on narrow screens */}
+      <div className="px-5 py-3 border-b border-slate-100 flex flex-col gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide mr-1">Rating</span>
           {RATING_FILTERS.map((f) => (
             <button key={f.label} onClick={() => setMinRating(f.value)}
@@ -245,14 +245,17 @@ export default function App() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1 bg-slate-100 rounded-full p-0.5">
-          {SORT_OPTIONS.map((s) => (
-            <button key={s.value} onClick={() => setSortBy(s.value)}
-              className={`px-2 py-0.5 rounded-full text-xs font-medium transition
-                ${sortBy === s.value ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-              {s.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Sort</span>
+          <div className="flex items-center gap-1 bg-slate-100 rounded-full p-0.5">
+            {SORT_OPTIONS.map((s) => (
+              <button key={s.value} onClick={() => setSortBy(s.value)}
+                className={`px-2 py-0.5 rounded-full text-xs font-medium transition
+                  ${sortBy === s.value ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </>
@@ -379,7 +382,7 @@ export default function App() {
 
             {/* Sheet content — scrollable */}
             {bottomOpen && (
-              <div className="bg-white overflow-y-auto max-h-[65vh] shadow-lg">
+              <div className="bg-white overflow-y-auto overflow-x-hidden max-h-[65vh] shadow-lg">
                 {filterSection}
                 {placesSection}
                 {/* Compact midpoint info — bottom, low-priority */}
@@ -426,7 +429,7 @@ export default function App() {
         {/* ════════════════════════════════════════
             DESKTOP UI  (hidden on mobile)
         ════════════════════════════════════════ */}
-        <aside className="hidden sm:flex flex-col absolute top-0 left-0 bottom-0 z-10 w-80 md:w-96 bg-white shadow-xl overflow-y-auto">
+        <aside className="hidden sm:flex flex-col absolute top-0 left-0 bottom-0 z-10 w-80 md:w-96 bg-white shadow-xl overflow-y-auto overflow-x-hidden">
 
           {/* Header */}
           <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex-shrink-0">
