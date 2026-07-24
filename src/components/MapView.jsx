@@ -105,15 +105,9 @@ function RouteLayer({ directionsResult, midpoint, radius = 500 }) {
 
 export default function MapView({
   pointA, pointB, midpoint, radius = 500,
-  directionsResult, activeInput, onMapClick, selectedPlace = null,
+  directionsResult, selectedPlace = null,
 }) {
   const defaultCenter = { lat: 1.3521, lng: 103.8198 };
-
-  const handleMapClick = (e) => {
-    if (!activeInput) return;
-    const latLng = e.detail?.latLng;
-    if (latLng) onMapClick({ lat: latLng.lat, lng: latLng.lng });
-  };
 
   const mapCenter =
     midpoint ||
@@ -127,9 +121,7 @@ export default function MapView({
       defaultZoom={12}
       gestureHandling="greedy"
       disableDefaultUI={false}
-      onClick={handleMapClick}
       style={{ width: '100%', height: '100%' }}
-      className={activeInput ? 'cursor-crosshair' : ''}
     >
       {pointA && <PinMarker position={pointA} color="#6366f1" border="#4338ca" label="A" scale={1.1} zIndex={10} />}
       {pointB && <PinMarker position={pointB} color="#f43f5e" border="#be123c" label="B" scale={1.1} zIndex={10} />}

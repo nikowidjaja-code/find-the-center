@@ -2,18 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useApiIsLoaded } from '@vis.gl/react-google-maps';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 
-/**
- * LocationInput — text input with Google Places Autocomplete and
- * a "use my location" GPS button.
- *
- * Props:
- *   label      — "Point A" or "Point B"
- *   value      — current display string
- *   onPlace(latLng: {lat, lng}, name: string) — called when a location is chosen
- *   isActive   — whether this input is the active click target on the map
- *   onFocus    — called when this input is focused (to set activeInput)
- */
-export default function LocationInput({ label, value, onPlace, isActive, onFocus }) {
+export default function LocationInput({ label, value, onPlace }) {
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const [inputValue, setInputValue] = useState(value || '');
@@ -53,7 +42,6 @@ export default function LocationInput({ label, value, onPlace, isActive, onFocus
     });
   };
 
-  const colorAccent = label === 'Point A' ? 'indigo' : 'rose';
   const dotColor = label === 'Point A' ? 'bg-indigo-500' : 'bg-rose-500';
 
   return (
@@ -63,11 +51,6 @@ export default function LocationInput({ label, value, onPlace, isActive, onFocus
         <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
           {label}
         </label>
-        {isActive && (
-          <span className="ml-auto text-xs text-indigo-500 font-medium">
-            Click map to set
-          </span>
-        )}
       </div>
 
       <div className="flex gap-2">
@@ -76,13 +59,8 @@ export default function LocationInput({ label, value, onPlace, isActive, onFocus
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          onFocus={onFocus}
           placeholder={`Search for ${label}...`}
-          className={`flex-1 px-3 py-2 text-sm rounded-lg border bg-white text-slate-800 placeholder-slate-400 outline-none transition
-            ${isActive
-              ? 'border-indigo-400 ring-2 ring-indigo-100'
-              : 'border-slate-200 hover:border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100'
-            }`}
+          className="flex-1 px-3 py-2 text-sm rounded-lg border bg-white text-slate-800 placeholder-slate-400 outline-none transition border-slate-200 hover:border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
         />
         <button
           onClick={handleUseLocation}

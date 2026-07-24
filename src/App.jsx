@@ -73,7 +73,6 @@ export default function App() {
   const [pointB, setPointB] = useState(null);
   const [nameA, setNameA] = useState('');
   const [nameB, setNameB] = useState('');
-  const [activeInput, setActiveInput] = useState('A');
 
   // --- Directions + midpoint ---
   const { directionsResult, midpoint, loading: dirLoading, error: dirError } = useDirections(pointA, pointB);
@@ -111,12 +110,10 @@ export default function App() {
     if (alat && alng) {
       setPointA({ lat: parseFloat(alat), lng: parseFloat(alng) });
       setNameA(an || `${alat}, ${alng}`);
-      setActiveInput('B');
     }
     if (blat && blng) {
       setPointB({ lat: parseFloat(blat), lng: parseFloat(blng) });
       setNameB(bn || `${blat}, ${blng}`);
-      setActiveInput(null);
     }
   }, []);
 
@@ -141,41 +138,12 @@ export default function App() {
     return results;
   }, [allPlaces, midpoint, debouncedRadius, minRating, sortBy]);
 
-  // --- Reverse geocode ---
-  const reverseGeocode = useCallback((lat, lng) => {
-    const fallback = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    return new Promise((resolve) => {
-      if (!window.google?.maps?.Geocoder) { resolve(fallback); return; }
-      const geocoder = new window.google.maps.Geocoder();
-      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-        if (status !== 'OK' || !results?.length) { resolve(fallback); return; }
-        const comps = results[0].address_components;
-        const get = (...types) => comps.find(c => types.some(t => c.types.includes(t)))?.long_name;
-        const street = get('route');
-        const area   = get('neighborhood', 'sublocality_level_1', 'sublocality');
-        const city   = get('locality', 'administrative_area_level_2');
-        resolve(street && city ? `${street}, ${city}` : area && city ? `${area}, ${city}` : results[0].formatted_address);
-      });
-    });
-  }, []);
-
-  const handleMapClick = useCallback(async ({ lat, lng }) => {
-    const name = await reverseGeocode(lat, lng);
-    if (activeInput === 'A') {
-      setPointA({ lat, lng }); setNameA(name); setActiveInput('B');
-      setTopOpen(true); // re-show inputs so user can set Point B
-    } else if (activeInput === 'B') {
-      setPointB({ lat, lng }); setNameB(name); setActiveInput(null);
-    }
-  }, [activeInput, reverseGeocode]);
-
   const handlePlaceA = useCallback(({ lat, lng }, name) => {
     setPointA({ lat, lng }); setNameA(name);
-    if (!pointB) setActiveInput('B'); else setActiveInput(null);
-  }, [pointB]);
+  }, []);
 
   const handlePlaceB = useCallback(({ lat, lng }, name) => {
-    setPointB({ lat, lng }); setNameB(name); setActiveInput(null);
+    setPointB({ lat, lng }); setNameB(name);
   }, []);
 
   const handleShare = useCallback(() => {
@@ -189,7 +157,7 @@ export default function App() {
 
   const handleReset = () => {
     setPointA(null); setPointB(null); setNameA(''); setNameB('');
-    setActiveInput('A'); setSelectedType(null); setMinRating(0);
+    setSelectedType(null); setMinRating(0);
     setSortBy('popularity'); setRadius(DEFAULT_SEARCH_RADIUS_M);
     setSelectedPlace(null); setBottomOpen(false); setTopOpen(true);
     window.history.replaceState(null, '', window.location.pathname);
@@ -302,8 +270,7 @@ export default function App() {
         <div className="absolute inset-0">
           <MapView
             pointA={pointA} pointB={pointB} midpoint={midpoint} radius={radius}
-            directionsResult={directionsResult} activeInput={activeInput}
-            onMapClick={handleMapClick} selectedPlace={selectedPlace}
+            directionsResult={directionsResult} selectedPlace={selectedPlace}
           />
         </div>
 
@@ -341,29 +308,8 @@ export default function App() {
             {/* Collapsible inputs */}
             {topOpen && (
               <div className="bg-slate-50 px-4 pt-1 pb-4 flex flex-col gap-3 border-t border-slate-200 shadow-[0_6px_12px_rgba(0,0,0,0.1)]">
-                <LocationInput
-                  label="Point A" value={nameA} onPlace={handlePlaceA}
-                  isActive={activeInput === 'A'} onFocus={() => setActiveInput('A')}
-                />
-                <LocationInput
-                  label="Point B" value={nameB} onPlace={handlePlaceB}
-                  isActive={activeInput === 'B'} onFocus={() => setActiveInput('B')}
-                />
-                {activeInput && (
-                  <button
-                    onClick={() => setTopOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 bg-indigo-50 rounded-lg border border-indigo-100 w-full text-left active:bg-indigo-100 transition"
-                  >
-                    <svg className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                    </svg>
-                    <p className="text-xs text-indigo-600 flex-1">
-                      Tap the map to set <strong>Point {activeInput}</strong>
-                    </p>
-                    <span className="text-indigo-300 text-sm">↓</span>
-                  </button>
-                )}
+                <LocationInput label="Point A" value={nameA} onPlace={handlePlaceA} />
+                <LocationInput label="Point B" value={nameB} onPlace={handlePlaceB} />
               </div>
             )}
 
@@ -464,18 +410,8 @@ export default function App() {
 
           {/* Inputs */}
           <div className="px-5 py-4 flex flex-col gap-4 bg-slate-50 flex-shrink-0 relative z-10 shadow-[0_4px_10px_rgba(0,0,0,0.08)]">
-            <LocationInput label="Point A" value={nameA} onPlace={handlePlaceA} isActive={activeInput === 'A'} onFocus={() => setActiveInput('A')} />
-            <LocationInput label="Point B" value={nameB} onPlace={handlePlaceB} isActive={activeInput === 'B'} onFocus={() => setActiveInput('B')} />
-            {activeInput && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 rounded-lg border border-indigo-100">
-                <svg className="w-4 h-4 text-indigo-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M15 15l6 6m-6-6a6 6 0 10-12 0 6 6 0 0012 0z" />
-                </svg>
-                <p className="text-xs text-indigo-600">
-                  Click on the map to set <strong>Point {activeInput}</strong>, or search above
-                </p>
-              </div>
-            )}
+            <LocationInput label="Point A" value={nameA} onPlace={handlePlaceA} />
+            <LocationInput label="Point B" value={nameB} onPlace={handlePlaceB} />
           </div>
 
           {/* Loading / error */}
