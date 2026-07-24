@@ -321,7 +321,7 @@ export default function App() {
         <div className="sm:hidden absolute inset-0 pointer-events-none">
 
           {/* ── Top panel ── */}
-          <div className="absolute top-0 left-0 right-0 z-10 pointer-events-auto">
+          <div className="absolute top-0 left-0 right-0 z-30 pointer-events-auto">
 
             {/* Header bar — always visible */}
             <div className="bg-white shadow-sm px-4 py-3 flex items-center justify-between">
