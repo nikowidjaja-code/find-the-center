@@ -102,6 +102,11 @@ export default function App() {
     setSelectedPlace(null);
   }, [midpoint?.lat, midpoint?.lng]);
 
+  // Close mobile bottom sheet when a place is selected so the map is visible
+  useEffect(() => {
+    if (selectedPlace) setBottomOpen(false);
+  }, [selectedPlace]);
+
   // Read URL params on first load (shared links)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

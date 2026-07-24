@@ -48,8 +48,11 @@ function MapController({ selectedPlace }) {
   const map = useMap();
   useEffect(() => {
     if (!map || !selectedPlace?.location) return;
-    map.panTo({ lat: selectedPlace.location.latitude, lng: selectedPlace.location.longitude });
-    map.setZoom(15);
+    const pos = { lat: selectedPlace.location.latitude, lng: selectedPlace.location.longitude };
+    // Pan first, then zoom in after a short delay — creates a "fly to" feel
+    map.panTo(pos);
+    const t = setTimeout(() => map.setZoom(15), 250);
+    return () => clearTimeout(t);
   }, [map, selectedPlace]);
   return null;
 }
