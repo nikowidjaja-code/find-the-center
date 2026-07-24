@@ -380,23 +380,18 @@ export default function App() {
             {/* Sheet content — scrollable */}
             {bottomOpen && (
               <div className="bg-white overflow-y-auto max-h-[65vh] shadow-lg">
-                {/* Midpoint summary */}
-                {hasMidpoint && !dirLoading && (
-                  <div className="px-5 py-3 border-b border-slate-100">
-                    <div className="bg-green-50 border border-green-100 rounded-xl p-3 flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-green-500">★</span>
-                        <span className="text-sm font-semibold text-green-800">Midpoint found</span>
-                      </div>
-                      <p className="text-xs text-green-700">{midpoint.lat.toFixed(5)}, {midpoint.lng.toFixed(5)}</p>
-                      {(totalTime || totalDist) && (
-                        <p className="text-xs text-slate-500">Total route: {totalDist} · {totalTime}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
                 {filterSection}
                 {placesSection}
+                {/* Compact midpoint info — bottom, low-priority */}
+                {hasMidpoint && !dirLoading && (
+                  <div className="px-5 py-2.5 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
+                    <span className="text-green-400">★</span>
+                    <span>{midpoint.lat.toFixed(4)}, {midpoint.lng.toFixed(4)}</span>
+                    {(totalTime || totalDist) && (
+                      <span className="ml-auto">{totalDist} · {totalTime}</span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -488,27 +483,22 @@ export default function App() {
             </div>
           )}
 
-          {/* Midpoint card */}
-          {hasMidpoint && !dirLoading && (
-            <div className="px-5 py-4 border-b border-slate-100 flex-shrink-0">
-              <div className="bg-green-50 border border-green-100 rounded-xl p-3 flex flex-col gap-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-green-500 text-lg">★</span>
-                  <span className="text-sm font-semibold text-green-800">Midpoint found!</span>
-                </div>
-                <p className="text-xs text-green-700">{midpoint.lat.toFixed(5)}, {midpoint.lng.toFixed(5)}</p>
-                {(totalTime || totalDist) && (
-                  <p className="text-xs text-slate-500">Total route: {totalDist} · {totalTime}</p>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Filters */}
           {filterSection}
 
           {/* Places */}
           <div className="flex-1">{placesSection}</div>
+
+          {/* Compact midpoint info — bottom, low-priority */}
+          {hasMidpoint && !dirLoading && (
+            <div className="px-5 py-2.5 border-t border-slate-100 flex-shrink-0 flex items-center gap-2 text-xs text-slate-400">
+              <span className="text-green-400">★</span>
+              <span>{midpoint.lat.toFixed(4)}, {midpoint.lng.toFixed(4)}</span>
+              {(totalTime || totalDist) && (
+                <span className="ml-auto">{totalDist} · {totalTime}</span>
+              )}
+            </div>
+          )}
 
         </aside>
 

@@ -1,4 +1,4 @@
-export const DEFAULT_SEARCH_RADIUS_M = 2000;
+export const DEFAULT_SEARCH_RADIUS_M = 1500;
 export const MIN_SEARCH_RADIUS_M = 100;
 export const MAX_SEARCH_RADIUS_M = 2000;
 export const RADIUS_DEBOUNCE_MS = 400;
