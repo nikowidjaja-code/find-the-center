@@ -14,8 +14,6 @@ import {
   RADIUS_DEBOUNCE_MS,
 } from './constants.js';
 
-const GEOCODE_TIMEOUT_MS = 5000;
-
 function haversineDistance(lat1, lng1, lat2, lng2) {
   const R = 6371000;
   const toRad = (d) => (d * Math.PI) / 180;
@@ -144,21 +142,21 @@ export default function App() {
   }, [allPlaces, midpoint, debouncedRadius, minRating, sortBy]);
 
   // --- Reverse geocode ---
-  const reverseGeocode = useCallback(async (lat, lng) => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), GEOCODE_TIMEOUT_MS);
-    try {
-      const res = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${API_KEY}`,
-        { signal: controller.signal }
-      );
-      const data = await res.json();
-      return data.results?.[0]?.formatted_address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    } catch {
-      return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    } finally {
-      clearTimeout(timeout);
-    }
+  const reverseGeocode = useCallback((lat, lng) => {
+    const fallback = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    return new Promise((resolve) => {
+      if (!window.google?.maps?.Geocoder) { resolve(fallback); return; }
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+        if (status !== 'OK' || !results?.length) { resolve(fallback); return; }
+        const comps = results[0].address_components;
+        const get = (...types) => comps.find(c => types.some(t => c.types.includes(t)))?.long_name;
+        const street = get('route');
+        const area   = get('neighborhood', 'sublocality_level_1', 'sublocality');
+        const city   = get('locality', 'administrative_area_level_2');
+        resolve(street && city ? `${street}, ${city}` : area && city ? `${area}, ${city}` : results[0].formatted_address);
+      });
+    });
   }, []);
 
   const handleMapClick = useCallback(async ({ lat, lng }) => {

@@ -1,22 +1,35 @@
 import { useState, useCallback } from 'react';
 
-const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-const FETCH_TIMEOUT_MS = 5000;
-
 const GEOLOCATION_ERRORS = {
   1: 'Permission denied. Allow location access in your browser settings.',
   2: 'Location unavailable. Check your internet connection.',
   3: 'Location request timed out. Try again.',
 };
 
-/**
- * Provides GPS-based location lookup with reverse geocoding.
- *
- * @returns {{ requestLocation: (onSuccess: (latLng, name) => void) => void, loading: boolean, error: string }}
- */
+// Extract a short, human-readable name from Geocoder results
+function pickReadableName(results) {
+  if (!results?.length) return null;
+
+  // Prefer a result with a street route
+  const target =
+    results.find(r => r.types.some(t => ['street_address', 'route', 'establishment', 'point_of_interest'].includes(t))) ||
+    results[0];
+
+  const comps = target.address_components;
+  const get = (...types) => comps.find(c => types.some(t => c.types.includes(t)))?.long_name;
+
+  const street = get('route');
+  const area   = get('neighborhood', 'sublocality_level_1', 'sublocality');
+  const city   = get('locality', 'administrative_area_level_2');
+
+  if (street && city) return `${street}, ${city}`;
+  if (area && city)   return `${area}, ${city}`;
+  return results[0].formatted_address;
+}
+
 export function useGeolocation() {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError]     = useState('');
 
   const requestLocation = useCallback((onSuccess) => {
     if (!navigator.geolocation) {
@@ -27,25 +40,23 @@ export function useGeolocation() {
     setError('');
 
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
+      (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-        try {
-          const res = await fetch(
-            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${API_KEY}`,
-            { signal: controller.signal }
-          );
-          const data = await res.json();
-          const name = data.results?.[0]?.formatted_address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-          onSuccess({ lat, lng }, name);
-        } catch {
-          onSuccess({ lat, lng }, `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-        } finally {
-          clearTimeout(timeout);
+        const fallback = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+        if (!window.google?.maps?.Geocoder) {
           setLoading(false);
+          onSuccess({ lat, lng }, fallback);
+          return;
         }
+
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+          setLoading(false);
+          const name = status === 'OK' ? (pickReadableName(results) ?? fallback) : fallback;
+          onSuccess({ lat, lng }, name);
+        });
       },
       (err) => {
         setLoading(false);
