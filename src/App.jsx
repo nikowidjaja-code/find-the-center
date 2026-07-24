@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { APIProvider } from '@vis.gl/react-google-maps';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { APIProvider, useApiIsLoaded } from '@vis.gl/react-google-maps';
 import LocationInput from './components/LocationInput.jsx';
 import MapView from './components/MapView.jsx';
 import PlacesList from './components/PlacesList.jsx';
+import SelectedPlaceCard from './components/SelectedPlaceCard.jsx';
 import { useDirections } from './hooks/useDirections.js';
 import { useDebounce } from './hooks/useDebounce.js';
 import { useNearbyPlaces } from './hooks/useNearbyPlaces.js';
@@ -28,19 +29,14 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 const PLACE_TYPES = [
-  { label: 'All',         value: null,                emoji: '🗺️' },
-  { label: 'Restaurant',  value: 'restaurant',        emoji: '🍽️' },
-  { label: 'Cafe',        value: 'cafe',              emoji: '☕' },
-  { label: 'Bar',         value: 'bar',               emoji: '🍺' },
-  { label: 'Mall',        value: 'shopping_mall',     emoji: '🛍️' },
-  { label: 'Hotel',       value: 'hotel',             emoji: '🏨' },
-  { label: 'Park',        value: 'park',              emoji: '🌳' },
-  { label: 'Museum',      value: 'museum',            emoji: '🏛️' },
-  { label: 'Cinema',      value: 'movie_theater',     emoji: '🎬' },
-  { label: 'Gym',         value: 'gym',               emoji: '💪' },
-  { label: 'Spa',         value: 'spa',               emoji: '💆' },
-  { label: 'Supermarket', value: 'supermarket',       emoji: '🛒' },
-  { label: 'Attraction',  value: 'tourist_attraction', emoji: '📍' },
+  { label: 'All',        value: null,             emoji: '🗺️' },
+  { label: 'Restaurant', value: 'restaurant',     emoji: '🍽️' },
+  { label: 'Cafe',       value: 'cafe',           emoji: '☕' },
+  { label: 'Bar',        value: 'bar',            emoji: '🍺' },
+  { label: 'Mall',       value: 'shopping_mall',  emoji: '🛍️' },
+  { label: 'Park',       value: 'park',           emoji: '🌳' },
+  { label: 'Cinema',     value: 'movie_theater',  emoji: '🎬' },
+  { label: 'Supermarket',value: 'supermarket',    emoji: '🛒' },
 ];
 
 const RATING_FILTERS = [
@@ -128,6 +124,24 @@ export default function App() {
 
   // --- Share state ---
   const [copied, setCopied] = useState(false);
+
+  // --- Midpoint address (reverse geocode) ---
+  const [midpointAddress, setMidpointAddress] = useState(null);
+  const apiLoaded = useApiIsLoaded();
+  const geocoderRef = useRef(null);
+  useEffect(() => {
+    if (!midpoint || !apiLoaded) { setMidpointAddress(null); return; }
+    if (!geocoderRef.current) geocoderRef.current = new window.google.maps.Geocoder();
+    geocoderRef.current.geocode({ location: { lat: midpoint.lat, lng: midpoint.lng } }, (results, status) => {
+      if (status !== 'OK' || !results?.length) return;
+      const r = results.find(r => r.types.some(t => ['neighborhood','sublocality','locality','administrative_area_level_2'].includes(t))) || results[0];
+      const comps = r.address_components;
+      const get = (...types) => comps.find(c => types.some(t => c.types.includes(t)))?.long_name;
+      const area = get('neighborhood', 'sublocality_level_1', 'sublocality');
+      const city = get('locality', 'administrative_area_level_2');
+      setMidpointAddress(area && city ? `${area}, ${city}` : city || r.formatted_address);
+    });
+  }, [midpoint?.lat, midpoint?.lng, apiLoaded]);
 
   // Auto-open bottom sheet when midpoint is found
   useEffect(() => {
@@ -286,6 +300,7 @@ export default function App() {
         places={nearbyPlaces} loading={placesLoading} error={placesError}
         selectedPlaceId={selectedPlace?.id} onSelectPlace={setSelectedPlace}
       />
+      {/* Empty states */}
       {!pointA && !pointB && (
         <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
           <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center">
@@ -295,10 +310,19 @@ export default function App() {
             </svg>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-600">Set two points to get started</p>
-            <p className="text-xs text-slate-400 mt-1">Search for a location, use GPS, or click the map</p>
+            <p className="text-sm font-semibold text-slate-700">Find a fair meeting spot</p>
+            <p className="text-xs text-slate-400 mt-1">Enter two locations to find places equally close to both of you</p>
           </div>
         </div>
+      )}
+      {pointA && !pointB && (
+        <p className="text-xs text-slate-400 text-center py-6">Now add Point B to find the midpoint</p>
+      )}
+      {!pointA && pointB && (
+        <p className="text-xs text-slate-400 text-center py-6">Now add Point A to find the midpoint</p>
+      )}
+      {hasMidpoint && !placesLoading && nearbyPlaces.length === 0 && !placesError && (
+        <p className="text-xs text-slate-400 text-center py-6">No places found nearby — try expanding the search radius</p>
       )}
     </div>
   );
@@ -380,6 +404,13 @@ export default function App() {
             )}
           </div>
 
+          {/* ── Selected place card — shown above the places panel ── */}
+          {selectedPlace && (
+            <div className="flex-shrink-0 pointer-events-auto relative z-20">
+              <SelectedPlaceCard place={selectedPlace} onDismiss={() => setSelectedPlace(null)} />
+            </div>
+          )}
+
           {/* ── Places panel — anchored directly below inputs ── */}
           <div className="flex-shrink-0 pointer-events-auto relative z-20">
 
@@ -388,43 +419,44 @@ export default function App() {
               onClick={() => setBottomOpen((v) => !v)}
               className="w-full bg-white border-t border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.08)] px-5 py-3 flex items-center justify-between"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 {hasMidpoint ? (
                   <>
-                    <span className="text-green-500 text-base">★</span>
-                    <span className="text-sm font-semibold text-slate-700">
+                    <span className="text-green-500 text-base flex-shrink-0">★</span>
+                    <span className="text-sm font-semibold text-slate-700 truncate">
                       {nearbyPlaces.length > 0
                         ? `${nearbyPlaces.length} place${nearbyPlaces.length !== 1 ? 's' : ''} nearby`
                         : 'Midpoint found'}
                     </span>
+                    {midpointAddress && (
+                      <span className="text-xs text-slate-400 truncate hidden xs:inline">{midpointAddress}</span>
+                    )}
                   </>
                 ) : (
-                  <span className="text-sm text-slate-400">Set two points to get started</span>
+                  <span className="text-sm text-slate-400">Enter two locations above</span>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 text-slate-400">
+              <div className="flex items-center gap-1.5 text-slate-400 flex-shrink-0">
                 <span className="text-xs">{bottomOpen ? 'Hide' : 'Show'}</span>
                 <ChevronIcon open={bottomOpen} />
               </div>
             </button>
 
-            {/* Sheet content — always in DOM so scroll position survives open/close */}
-            <div
-              data-scroll-preserve
-              className={`bg-white overflow-y-auto overflow-x-hidden max-h-[55vh] shadow-lg ${bottomOpen ? '' : 'hidden'}`}
-            >
-              {filterSection}
-              {placesSection}
-              {/* Compact midpoint info — bottom, low-priority */}
-              {hasMidpoint && !dirLoading && (
-                <div className="px-5 py-2.5 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
-                  <span className="text-green-400">★</span>
-                  <span>{midpoint.lat.toFixed(4)}, {midpoint.lng.toFixed(4)}</span>
-                  {(totalTime || totalDist) && (
-                    <span className="ml-auto">{totalDist} · {totalTime}</span>
-                  )}
-                </div>
-              )}
+            {/* Sheet content — animated open/close */}
+            <div style={{ maxHeight: bottomOpen ? '55vh' : 0, transition: 'max-height 0.3s ease-in-out', overflow: 'hidden' }}>
+              <div data-scroll-preserve className="bg-white overflow-y-auto overflow-x-hidden max-h-[55vh] shadow-lg">
+                {filterSection}
+                {placesSection}
+                {hasMidpoint && !dirLoading && (
+                  <div className="px-5 py-2.5 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
+                    <span className="text-green-400">★</span>
+                    <span>{midpointAddress || `${midpoint.lat.toFixed(4)}, ${midpoint.lng.toFixed(4)}`}</span>
+                    {(totalTime || totalDist) && (
+                      <span className="ml-auto">{totalDist} · {totalTime}</span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -443,7 +475,7 @@ export default function App() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-lg font-bold text-slate-800 tracking-tight">Find the Center</h1>
-                <p className="text-xs text-slate-400 mt-0.5">Time-equidistant meeting point finder</p>
+                <p className="text-xs text-slate-400 mt-0.5">Find a fair meeting spot between two locations</p>
               </div>
               <div className="flex items-center gap-2">
                 {selectedPlace && (
@@ -492,6 +524,13 @@ export default function App() {
             </div>
           )}
 
+          {/* Selected place detail card */}
+          {selectedPlace && (
+            <div className="flex-shrink-0 border-b border-slate-100">
+              <SelectedPlaceCard place={selectedPlace} onDismiss={() => setSelectedPlace(null)} />
+            </div>
+          )}
+
           {/* Filters */}
           {filterSection}
 
@@ -502,9 +541,9 @@ export default function App() {
           {hasMidpoint && !dirLoading && (
             <div className="px-5 py-2.5 border-t border-slate-100 flex-shrink-0 flex items-center gap-2 text-xs text-slate-400">
               <span className="text-green-400">★</span>
-              <span>{midpoint.lat.toFixed(4)}, {midpoint.lng.toFixed(4)}</span>
+              <span className="truncate">{midpointAddress || `${midpoint.lat.toFixed(4)}, ${midpoint.lng.toFixed(4)}`}</span>
               {(totalTime || totalDist) && (
-                <span className="ml-auto">{totalDist} · {totalTime}</span>
+                <span className="ml-auto flex-shrink-0">{totalDist} · {totalTime}</span>
               )}
             </div>
           )}

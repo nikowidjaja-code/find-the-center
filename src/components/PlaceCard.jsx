@@ -6,26 +6,32 @@ import { calcFairness } from '../utils/fairness.js';
  * Props:
  *   place — a place object from the Places API (New) response
  */
-function TravelBadge({ label, color, element }) {
-  if (!element || element.status !== 'OK') return null;
-  return (
-    <div className="flex items-center gap-1">
-      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${color}`} />
-      <span className="text-xs text-slate-500 font-medium">{label}:</span>
-      <span className="text-xs text-slate-700">{element.duration.text}</span>
-      <span className="text-xs text-slate-400">· {element.distance.text}</span>
-    </div>
-  );
-}
+function TravelRow({ fromA, fromB }) {
+  const tA = fromA?.status === 'OK' ? fromA.duration.text : null;
+  const tB = fromB?.status === 'OK' ? fromB.duration.text : null;
+  const fairness = calcFairness(fromA, fromB);
+  const fairColor = fairness === null ? '' : fairness >= 80 ? 'text-green-600' : fairness >= 60 ? 'text-amber-500' : 'text-rose-500';
 
-function FairnessBadge({ fromA, fromB }) {
-  const score = calcFairness(fromA, fromB);
-  if (score === null) return null;
-  const color = score >= 80 ? 'text-green-600' : score >= 60 ? 'text-amber-500' : 'text-rose-500';
+  if (!tA && !tB) return null;
   return (
-    <div className="flex items-center gap-1 mt-0.5">
-      <span className="text-xs">⚖</span>
-      <span className={`text-xs font-medium ${color}`}>{score}% balanced</span>
+    <div className="flex items-center gap-3 pt-1.5 mt-0.5 border-t border-slate-100 flex-wrap">
+      {tA && (
+        <span className="flex items-center gap-1 text-xs">
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
+          <span className="text-slate-500">A:</span>
+          <span className="font-semibold text-slate-700">{tA}</span>
+        </span>
+      )}
+      {tB && (
+        <span className="flex items-center gap-1 text-xs">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0" />
+          <span className="text-slate-500">B:</span>
+          <span className="font-semibold text-slate-700">{tB}</span>
+        </span>
+      )}
+      {fairness !== null && (
+        <span className={`text-xs font-medium ${fairColor}`}>⚖ {fairness}%</span>
+      )}
     </div>
   );
 }
@@ -131,13 +137,7 @@ export default function PlaceCard({ place, isSelected, onSelect }) {
         </div>
       )}
 
-      {(place.fromA || place.fromB) && (
-        <div className="flex flex-col gap-0.5 pt-1.5 mt-0.5 border-t border-slate-100">
-          <TravelBadge label="From A" color="bg-indigo-500" element={place.fromA} />
-          <TravelBadge label="From B" color="bg-rose-500"   element={place.fromB} />
-          <FairnessBadge fromA={place.fromA} fromB={place.fromB} />
-        </div>
-      )}
+      <TravelRow fromA={place.fromA} fromB={place.fromB} />
     </div>
   );
 }
