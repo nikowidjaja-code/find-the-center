@@ -164,8 +164,12 @@ export default function App() {
 
   const handleMapClick = useCallback(async ({ lat, lng }) => {
     const name = await reverseGeocode(lat, lng);
-    if (activeInput === 'A') { setPointA({ lat, lng }); setNameA(name); setActiveInput('B'); }
-    else if (activeInput === 'B') { setPointB({ lat, lng }); setNameB(name); setActiveInput(null); }
+    if (activeInput === 'A') {
+      setPointA({ lat, lng }); setNameA(name); setActiveInput('B');
+      setTopOpen(true); // re-show inputs so user can set Point B
+    } else if (activeInput === 'B') {
+      setPointB({ lat, lng }); setNameB(name); setActiveInput(null);
+    }
   }, [activeInput, reverseGeocode]);
 
   const handlePlaceA = useCallback(({ lat, lng }, name) => {
@@ -357,14 +361,19 @@ export default function App() {
                   isActive={activeInput === 'B'} onFocus={() => setActiveInput('B')}
                 />
                 {activeInput && (
-                  <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 rounded-lg border border-indigo-100">
+                  <button
+                    onClick={() => setTopOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 bg-indigo-50 rounded-lg border border-indigo-100 w-full text-left active:bg-indigo-100 transition"
+                  >
                     <svg className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M15 15l6 6m-6-6a6 6 0 10-12 0 6 6 0 0012 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
                     </svg>
-                    <p className="text-xs text-indigo-600">
+                    <p className="text-xs text-indigo-600 flex-1">
                       Tap the map to set <strong>Point {activeInput}</strong>
                     </p>
-                  </div>
+                    <span className="text-indigo-300 text-sm">↓</span>
+                  </button>
                 )}
               </div>
             )}
