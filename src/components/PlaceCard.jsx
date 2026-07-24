@@ -1,3 +1,5 @@
+import { calcFairness } from '../utils/fairness.js';
+
 /**
  * PlaceCard — displays a single nearby place result.
  *
@@ -12,6 +14,18 @@ function TravelBadge({ label, color, element }) {
       <span className="text-xs text-slate-500 font-medium">{label}:</span>
       <span className="text-xs text-slate-700">{element.duration.text}</span>
       <span className="text-xs text-slate-400">· {element.distance.text}</span>
+    </div>
+  );
+}
+
+function FairnessBadge({ fromA, fromB }) {
+  const score = calcFairness(fromA, fromB);
+  if (score === null) return null;
+  const color = score >= 80 ? 'text-green-600' : score >= 60 ? 'text-amber-500' : 'text-rose-500';
+  return (
+    <div className="flex items-center gap-1 mt-0.5">
+      <span className="text-xs">⚖</span>
+      <span className={`text-xs font-medium ${color}`}>{score}% balanced</span>
     </div>
   );
 }
@@ -121,6 +135,7 @@ export default function PlaceCard({ place, isSelected, onSelect }) {
         <div className="flex flex-col gap-0.5 pt-1.5 mt-0.5 border-t border-slate-100">
           <TravelBadge label="From A" color="bg-indigo-500" element={place.fromA} />
           <TravelBadge label="From B" color="bg-rose-500"   element={place.fromB} />
+          <FairnessBadge fromA={place.fromA} fromB={place.fromB} />
         </div>
       )}
     </div>

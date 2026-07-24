@@ -6,6 +6,7 @@ import PlacesList from './components/PlacesList.jsx';
 import { useDirections } from './hooks/useDirections.js';
 import { useDebounce } from './hooks/useDebounce.js';
 import { useNearbyPlaces } from './hooks/useNearbyPlaces.js';
+import { calcFairness } from './utils/fairness.js';
 import {
   DEFAULT_SEARCH_RADIUS_M,
   MIN_SEARCH_RADIUS_M,
@@ -29,21 +30,33 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 const PLACE_TYPES = [
-  { label: 'All',         value: null,              emoji: '🗺️' },
-  { label: 'Restaurant',  value: 'restaurant',       emoji: '🍽️' },
-  { label: 'Cafe',        value: 'cafe',             emoji: '☕' },
-  { label: 'Bar',         value: 'bar',              emoji: '🍺' },
-  { label: 'Mall',        value: 'shopping_mall',    emoji: '🛍️' },
-  { label: 'Hotel',       value: 'hotel',            emoji: '🏨' },
-  { label: 'Park',        value: 'park',             emoji: '🌳' },
-  { label: 'Museum',      value: 'museum',           emoji: '🏛️' },
-  { label: 'Cinema',      value: 'movie_theater',    emoji: '🎬' },
-  { label: 'Gym',         value: 'gym',              emoji: '💪' },
-  { label: 'Spa',         value: 'spa',              emoji: '💆' },
-  { label: 'Supermarket', value: 'supermarket',      emoji: '🛒' },
+  { label: 'All',         value: null,                emoji: '🗺️' },
+  { label: 'Restaurant',  value: 'restaurant',        emoji: '🍽️' },
+  { label: 'Cafe',        value: 'cafe',              emoji: '☕' },
+  { label: 'Bar',         value: 'bar',               emoji: '🍺' },
+  { label: 'Mall',        value: 'shopping_mall',     emoji: '🛍️' },
+  { label: 'Hotel',       value: 'hotel',             emoji: '🏨' },
+  { label: 'Park',        value: 'park',              emoji: '🌳' },
+  { label: 'Museum',      value: 'museum',            emoji: '🏛️' },
+  { label: 'Cinema',      value: 'movie_theater',     emoji: '🎬' },
+  { label: 'Gym',         value: 'gym',               emoji: '💪' },
+  { label: 'Spa',         value: 'spa',               emoji: '💆' },
+  { label: 'Supermarket', value: 'supermarket',       emoji: '🛒' },
   { label: 'Attraction',  value: 'tourist_attraction', emoji: '📍' },
 ];
 
+const RATING_FILTERS = [
+  { label: 'Any',  value: 0   },
+  { label: '3.5+', value: 3.5 },
+  { label: '4.0+', value: 4.0 },
+  { label: '4.5+', value: 4.5 },
+];
+
+const SORT_OPTIONS = [
+  { label: 'Popular', value: 'popularity' },
+  { label: 'Fairest', value: 'fairness'   },
+  { label: 'Rating',  value: 'rating'     },
+];
 
 export default function App() {
   // --- Location state ---
@@ -52,7 +65,6 @@ export default function App() {
   const [nameA, setNameA] = useState('');
   const [nameB, setNameB] = useState('');
 
-  // Which input is "active" (determines what a map click sets)
   const [activeInput, setActiveInput] = useState('A');
 
   // --- Directions + midpoint ---
@@ -63,28 +75,72 @@ export default function App() {
 
   // --- Nearby places ---
   const [selectedType, setSelectedType] = useState(null);
+  const [minRating, setMinRating] = useState(0);
+  const [sortBy, setSortBy] = useState('popularity');
   const [radius, setRadius] = useState(DEFAULT_SEARCH_RADIUS_M);
   const [selectedPlace, setSelectedPlace] = useState(null);
   const debouncedRadius = useDebounce(radius, RADIUS_DEBOUNCE_MS);
 
-  // Clear the selected place whenever the midpoint moves so stale selections don't persist
+  // --- Share button ---
+  const [copied, setCopied] = useState(false);
+
+  // Clear selected place whenever the midpoint moves
   useEffect(() => {
     setSelectedPlace(null);
   }, [midpoint?.lat, midpoint?.lng]);
+
+  // Read URL params on first load to support shared links
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const alat = params.get('alat');
+    const alng = params.get('alng');
+    const an   = params.get('an');
+    const blat = params.get('blat');
+    const blng = params.get('blng');
+    const bn   = params.get('bn');
+    if (alat && alng) {
+      setPointA({ lat: parseFloat(alat), lng: parseFloat(alng) });
+      setNameA(an || `${alat}, ${alng}`);
+      setActiveInput('B');
+    }
+    if (blat && blng) {
+      setPointB({ lat: parseFloat(blat), lng: parseFloat(blng) });
+      setNameB(bn || `${blat}, ${blng}`);
+      setActiveInput(null);
+    }
+  }, []);
 
   const { places: allPlaces, loading: placesLoading, error: placesError } = useNearbyPlaces(
     midpoint, pointA, pointB, selectedType
   );
 
-  // Filter client-side by radius — no extra API call needed when slider moves
+  // Filter and sort client-side — no extra API calls
   const nearbyPlaces = useMemo(() => {
     if (!midpoint) return [];
-    return allPlaces.filter((p) =>
-      haversineDistance(midpoint.lat, midpoint.lng, p.location.latitude, p.location.longitude) <= debouncedRadius
-    );
-  }, [allPlaces, midpoint, debouncedRadius]);
 
-  // --- Reverse geocode a clicked lat/lng to get a display name ---
+    let results = allPlaces.filter((p) => {
+      const withinRadius = haversineDistance(
+        midpoint.lat, midpoint.lng,
+        p.location.latitude, p.location.longitude
+      ) <= debouncedRadius;
+      const meetsRating = minRating === 0 || (typeof p.rating === 'number' && p.rating >= minRating);
+      return withinRadius && meetsRating;
+    });
+
+    if (sortBy === 'fairness') {
+      results = [...results].sort((a, b) => {
+        const fa = calcFairness(a.fromA, a.fromB) ?? -1;
+        const fb = calcFairness(b.fromA, b.fromB) ?? -1;
+        return fb - fa;
+      });
+    } else if (sortBy === 'rating') {
+      results = [...results].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+    }
+
+    return results;
+  }, [allPlaces, midpoint, debouncedRadius, minRating, sortBy]);
+
+  // --- Reverse geocode ---
   const reverseGeocode = useCallback(async (lat, lng) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), GEOCODE_TIMEOUT_MS);
@@ -102,7 +158,7 @@ export default function App() {
     }
   }, []);
 
-  // --- Map click handler ---
+  // --- Map click ---
   const handleMapClick = useCallback(
     async ({ lat, lng }) => {
       const name = await reverseGeocode(lat, lng);
@@ -119,7 +175,7 @@ export default function App() {
     [activeInput, reverseGeocode]
   );
 
-  // --- LocationInput place callbacks ---
+  // --- LocationInput callbacks ---
   const handlePlaceA = useCallback(({ lat, lng }, name) => {
     setPointA({ lat, lng });
     setNameA(name);
@@ -133,6 +189,23 @@ export default function App() {
     setActiveInput(null);
   }, []);
 
+  // --- Share ---
+  const handleShare = useCallback(() => {
+    const params = new URLSearchParams({
+      alat: pointA.lat.toFixed(6),
+      alng: pointA.lng.toFixed(6),
+      an:   nameA,
+      blat: pointB.lat.toFixed(6),
+      blng: pointB.lng.toFixed(6),
+      bn:   nameB,
+    });
+    const url = `${window.location.origin}${window.location.pathname}?${params}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [pointA, nameA, pointB, nameB]);
+
   // --- Reset ---
   const handleReset = () => {
     setPointA(null);
@@ -140,11 +213,12 @@ export default function App() {
     setNameA('');
     setNameB('');
     setActiveInput('A');
-    setNearbyPlaces([]);
-    setPlacesError(null);
     setSelectedType(null);
+    setMinRating(0);
+    setSortBy('popularity');
     setRadius(DEFAULT_SEARCH_RADIUS_M);
     setSelectedPlace(null);
+    window.history.replaceState(null, '', window.location.pathname);
   };
 
   // --- Derived state ---
@@ -170,14 +244,25 @@ export default function App() {
                   Time-equidistant meeting point finder
                 </p>
               </div>
-              {(pointA || pointB) && (
-                <button
-                  onClick={handleReset}
-                  className="text-xs text-slate-400 hover:text-rose-500 transition font-medium"
-                >
-                  Reset
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {pointA && pointB && (
+                  <button
+                    onClick={handleShare}
+                    className="text-xs text-indigo-500 hover:text-indigo-700 transition font-medium"
+                  >
+                    {copied ? 'Copied!' : 'Share ↗'}
+                  </button>
+                )}
+                {(pointA || pointB) && (
+                  <button
+                    onClick={handleReset}
+                    aria-label="Reset all points and filters"
+                    className="text-xs text-slate-400 hover:text-rose-500 transition font-medium"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -198,7 +283,6 @@ export default function App() {
               onFocus={() => setActiveInput('B')}
             />
 
-            {/* Map click hint */}
             {activeInput && (
               <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 rounded-lg border border-indigo-100">
                 <svg className="w-4 h-4 text-indigo-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -293,6 +377,43 @@ export default function App() {
                     </button>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Rating filter + Sort */}
+          {hasMidpoint && (
+            <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide mr-1">Rating</span>
+                {RATING_FILTERS.map((f) => (
+                  <button
+                    key={f.label}
+                    onClick={() => setMinRating(f.value)}
+                    className={`px-2 py-0.5 rounded-full text-xs font-medium transition
+                      ${minRating === f.value
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1 bg-slate-100 rounded-full p-0.5">
+                {SORT_OPTIONS.map((s) => (
+                  <button
+                    key={s.value}
+                    onClick={() => setSortBy(s.value)}
+                    className={`px-2 py-0.5 rounded-full text-xs font-medium transition
+                      ${sortBy === s.value
+                        ? 'bg-white text-slate-800 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
               </div>
             </div>
           )}
