@@ -389,23 +389,24 @@ export default function App() {
           {/* ── Bottom sheet ── */}
           <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-auto">
 
-            {/* Sheet content — scrollable */}
-            {bottomOpen && (
-              <div data-scroll-preserve className="bg-white overflow-y-auto overflow-x-hidden max-h-[65vh] shadow-lg">
-                {filterSection}
-                {placesSection}
-                {/* Compact midpoint info — bottom, low-priority */}
-                {hasMidpoint && !dirLoading && (
-                  <div className="px-5 py-2.5 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
-                    <span className="text-green-400">★</span>
-                    <span>{midpoint.lat.toFixed(4)}, {midpoint.lng.toFixed(4)}</span>
-                    {(totalTime || totalDist) && (
-                      <span className="ml-auto">{totalDist} · {totalTime}</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Sheet content — always in DOM so scroll position survives open/close */}
+            <div
+              data-scroll-preserve
+              className={`bg-white overflow-y-auto overflow-x-hidden max-h-[65vh] shadow-lg ${bottomOpen ? '' : 'hidden'}`}
+            >
+              {filterSection}
+              {placesSection}
+              {/* Compact midpoint info — bottom, low-priority */}
+              {hasMidpoint && !dirLoading && (
+                <div className="px-5 py-2.5 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
+                  <span className="text-green-400">★</span>
+                  <span>{midpoint.lat.toFixed(4)}, {midpoint.lng.toFixed(4)}</span>
+                  {(totalTime || totalDist) && (
+                    <span className="ml-auto">{totalDist} · {totalTime}</span>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Handle bar — always visible, toggles sheet */}
             <button
