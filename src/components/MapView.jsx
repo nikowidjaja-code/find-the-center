@@ -124,6 +124,7 @@ export default function MapView({
       defaultZoom={12}
       gestureHandling="greedy"
       disableDefaultUI={false}
+      streetViewControl={false}
       style={{ width: '100%', height: '100%' }}
     >
       {pointA && <PinMarker position={pointA} color="#6366f1" border="#4338ca" label="A" scale={1.1} zIndex={10} />}
