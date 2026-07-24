@@ -318,7 +318,7 @@ export default function App() {
           <div className="absolute top-0 left-0 right-0 z-20 pointer-events-auto">
 
             {/* Header bar — always visible */}
-            <div className="bg-white/95 backdrop-blur-sm shadow-sm px-4 py-3 flex items-center justify-between">
+            <div className="bg-white shadow-sm px-4 py-3 flex items-center justify-between">
               <button
                 onClick={() => setTopOpen((v) => !v)}
                 className="flex items-center gap-2 text-left"
@@ -342,7 +342,7 @@ export default function App() {
 
             {/* Collapsible inputs */}
             {topOpen && (
-              <div className="bg-slate-50/97 backdrop-blur-sm px-4 pt-1 pb-4 flex flex-col gap-3 border-t border-slate-200 shadow-[0_6px_12px_rgba(0,0,0,0.1)]">
+              <div className="bg-slate-50 px-4 pt-1 pb-4 flex flex-col gap-3 border-t border-slate-200 shadow-[0_6px_12px_rgba(0,0,0,0.1)]">
                 <LocationInput
                   label="Point A" value={nameA} onPlace={handlePlaceA}
                   isActive={activeInput === 'A'} onFocus={() => setActiveInput('A')}
