@@ -129,9 +129,9 @@ export default function App() {
   // --- Share state ---
   const [copied, setCopied] = useState(false);
 
-  // Auto-open bottom sheet when midpoint is found
+  // Auto-open bottom sheet when midpoint is found, collapse inputs to avoid overlap
   useEffect(() => {
-    if (midpoint) setBottomOpen(true);
+    if (midpoint) { setBottomOpen(true); setTopOpen(false); }
   }, [midpoint?.lat, midpoint?.lng]);
 
   // Clear selected place whenever midpoint changes
@@ -326,7 +326,7 @@ export default function App() {
             {/* Header bar — always visible */}
             <div className="bg-white shadow-sm px-4 py-3 flex items-center justify-between">
               <button
-                onClick={() => setTopOpen((v) => !v)}
+                onClick={() => { setTopOpen((v) => { if (!v) setBottomOpen(false); return !v; }); }}
                 className="flex items-center gap-2 text-left"
               >
                 <span className="text-sm font-bold text-slate-800">Find the Center</span>
@@ -404,7 +404,7 @@ export default function App() {
 
             {/* Handle bar — always visible, toggles sheet */}
             <button
-              onClick={() => setBottomOpen((v) => !v)}
+              onClick={() => { setBottomOpen((v) => { if (!v) setTopOpen(false); return !v; }); }}
               className="w-full bg-white border-t border-slate-100 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-5 py-3 flex items-center justify-between"
             >
               <div className="flex items-center gap-2">
