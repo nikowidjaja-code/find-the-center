@@ -89,7 +89,7 @@ export default function LocationInput({ label, value, onPlace, isActive, onFocus
           disabled={locLoading}
           title="Use my current location"
           aria-label="Use my current location"
-          className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 transition text-slate-500 hover:text-indigo-600 disabled:opacity-50"
+          className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 transition text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {locLoading ? (
             <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -98,8 +98,7 @@ export default function LocationInput({ label, value, onPlace, isActive, onFocus
             </svg>
           ) : (
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+              <polygon points="3 11 22 2 13 21 11 13 3 11" />
             </svg>
           )}
         </button>
