@@ -129,7 +129,6 @@ export default function MapView({
     >
       {pointA && <PinMarker position={pointA} color="#6366f1" border="#4338ca" label="A" scale={1.1} zIndex={10} />}
       {pointB && <PinMarker position={pointB} color="#f43f5e" border="#be123c" label="B" scale={1.1} zIndex={10} />}
-      {midpoint && <PinMarker position={midpoint} color="#22c55e" border="#16a34a" label="★" scale={1.2} zIndex={20} />}
       {selectedPlace?.location && (
         <PinMarker
           position={{ lat: selectedPlace.location.latitude, lng: selectedPlace.location.longitude }}

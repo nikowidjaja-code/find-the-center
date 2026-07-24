@@ -6,7 +6,7 @@ import PlacesList from './components/PlacesList.jsx';
 import { useDirections } from './hooks/useDirections.js';
 import { useDebounce } from './hooks/useDebounce.js';
 import { useNearbyPlaces } from './hooks/useNearbyPlaces.js';
-import { calcFairness } from './utils/fairness.js';
+import { calcFairness, calcScore } from './utils/fairness.js';
 import {
   DEFAULT_SEARCH_RADIUS_M,
   MIN_SEARCH_RADIUS_M,
@@ -51,9 +51,10 @@ const RATING_FILTERS = [
 ];
 
 const SORT_OPTIONS = [
-  { label: 'Popular', value: 'popularity' },
+  { label: 'Best',    value: 'balanced'   },
   { label: 'Fairest', value: 'fairness'   },
   { label: 'Rating',  value: 'rating'     },
+  { label: 'Popular', value: 'popularity' },
 ];
 
 const TRAVEL_MODES = [
@@ -116,7 +117,7 @@ export default function App() {
   // --- Nearby places ---
   const [selectedType, setSelectedType] = useState(null);
   const [minRating, setMinRating] = useState(0);
-  const [sortBy, setSortBy] = useState('popularity');
+  const [sortBy, setSortBy] = useState('balanced');
   const [radius, setRadius] = useState(DEFAULT_SEARCH_RADIUS_M);
   const [selectedPlace, setSelectedPlace] = useState(null);
   const debouncedRadius = useDebounce(radius, RADIUS_DEBOUNCE_MS);
@@ -171,7 +172,9 @@ export default function App() {
       const meetsRating = minRating === 0 || (typeof p.rating === 'number' && p.rating >= minRating);
       return withinRadius && meetsRating;
     });
-    if (sortBy === 'fairness') {
+    if (sortBy === 'balanced') {
+      results = [...results].sort((a, b) => calcScore(b) - calcScore(a));
+    } else if (sortBy === 'fairness') {
       results = [...results].sort((a, b) => (calcFairness(b.fromA, b.fromB) ?? -1) - (calcFairness(a.fromA, a.fromB) ?? -1));
     } else if (sortBy === 'rating') {
       results = [...results].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
@@ -199,7 +202,7 @@ export default function App() {
   const handleReset = () => {
     setPointA(null); setPointB(null); setNameA(''); setNameB('');
     setTravelMode('DRIVING'); setSelectedType(null); setMinRating(0);
-    setSortBy('popularity'); setRadius(DEFAULT_SEARCH_RADIUS_M);
+    setSortBy('balanced'); setRadius(DEFAULT_SEARCH_RADIUS_M);
     setSelectedPlace(null); setBottomOpen(false); setTopOpen(true);
     window.history.replaceState(null, '', window.location.pathname);
   };

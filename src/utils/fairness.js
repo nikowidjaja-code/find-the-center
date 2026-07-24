@@ -12,3 +12,11 @@ export function calcFairness(fromA, fromB) {
   if (!dA || !dB) return null;
   return Math.round((Math.min(dA, dB) / Math.max(dA, dB)) * 100);
 }
+
+// Combined score: 50% rating quality + 50% location fairness
+// Used for the default "Best" sort
+export function calcScore(place) {
+  const rating   = (typeof place.rating === 'number' ? place.rating : 3.5) / 5;
+  const fairness = (calcFairness(place.fromA, place.fromB) ?? 50) / 100;
+  return rating * 0.5 + fairness * 0.5;
+}
