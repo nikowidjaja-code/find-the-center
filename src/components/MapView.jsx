@@ -118,7 +118,7 @@ export default function MapView({
       ? { lat: (pointA.lat + pointB.lat) / 2, lng: (pointA.lng + pointB.lng) / 2 }
       : pointA || pointB || defaultCenter);
 
-  const defaultZoom = (!pointA && !pointB && !midpoint) ? 8 : 12;
+  const defaultZoom = (!pointA && !pointB && !midpoint) ? 7 : 12;
 
   return (
     <Map
