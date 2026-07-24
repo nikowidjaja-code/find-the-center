@@ -4,7 +4,7 @@ import { DIRECTIONS_DEBOUNCE_MS } from '../constants.js';
 
 const DIRECTIONS_ERRORS = {
   NOT_FOUND: 'One or both locations could not be found.',
-  ZERO_RESULTS: 'No driving route found between these locations.',
+  ZERO_RESULTS: 'No route found between these locations for the selected travel mode.',
   INVALID_REQUEST: 'Invalid request. Try different locations.',
   OVER_QUERY_LIMIT: 'Too many requests. Please wait and try again.',
   REQUEST_DENIED: 'Directions request was denied.',
@@ -19,7 +19,7 @@ const DIRECTIONS_ERRORS = {
  * @param {{ lat: number, lng: number } | null} pointB
  * @returns {{ directionsResult: object|null, midpoint: {lat,lng}|null, loading: boolean, error: string|null }}
  */
-export function useDirections(pointA, pointB) {
+export function useDirections(pointA, pointB, travelMode = 'DRIVING') {
   const [directionsResult, setDirectionsResult] = useState(null);
   const [midpoint, setMidpoint] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -61,7 +61,8 @@ export function useDirections(pointA, pointB) {
       const request = {
         origin: new window.google.maps.LatLng(pointA.lat, pointA.lng),
         destination: new window.google.maps.LatLng(pointB.lat, pointB.lng),
-        travelMode: window.google.maps.TravelMode.DRIVING,
+        travelMode: window.google.maps.TravelMode[travelMode],
+        ...(travelMode === 'TRANSIT' && { transitOptions: { departureTime: new Date() } }),
       };
 
       serviceRef.current.route(request, (result, status) => {
@@ -87,6 +88,7 @@ export function useDirections(pointA, pointB) {
     pointA?.lng,
     pointB?.lat,
     pointB?.lng,
+    travelMode,
   ]);
 
   return { directionsResult, midpoint, loading, error };

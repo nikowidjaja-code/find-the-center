@@ -28,7 +28,7 @@ const PLACES_FIELD_MASK = [
  * @param {string | null} selectedType
  * @returns {{ places: object[], loading: boolean, error: string | null }}
  */
-export function useNearbyPlaces(midpoint, pointA, pointB, selectedType) {
+export function useNearbyPlaces(midpoint, pointA, pointB, selectedType, travelMode = 'DRIVING') {
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -102,7 +102,7 @@ export function useNearbyPlaces(midpoint, pointA, pointB, selectedType) {
               destinations: rawPlaces.map(
                 (p) => new window.google.maps.LatLng(p.location.latitude, p.location.longitude)
               ),
-              travelMode: window.google.maps.TravelMode.DRIVING,
+              travelMode: window.google.maps.TravelMode[travelMode],
             },
             (result, status) => {
               if (cancelled) { reject(new Error('cancelled')); return; }
@@ -142,7 +142,7 @@ export function useNearbyPlaces(midpoint, pointA, pointB, selectedType) {
       cancelled = true;
       controller.abort();
     };
-  }, [midpoint?.lat, midpoint?.lng, selectedType, pointA?.lat, pointA?.lng, pointB?.lat, pointB?.lng]);
+  }, [midpoint?.lat, midpoint?.lng, selectedType, travelMode, pointA?.lat, pointA?.lng, pointB?.lat, pointB?.lng]);
 
   return { places, loading, error };
 }

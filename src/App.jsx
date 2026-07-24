@@ -56,6 +56,39 @@ const SORT_OPTIONS = [
   { label: 'Rating',  value: 'rating'     },
 ];
 
+const TRAVEL_MODES = [
+  {
+    value: 'DRIVING',
+    label: 'Drive',
+    icon: (
+      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v9a2 2 0 01-2 2h-1"/>
+        <circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>
+      </svg>
+    ),
+  },
+  {
+    value: 'TRANSIT',
+    label: 'Transit',
+    icon: (
+      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="3" width="16" height="14" rx="2"/>
+        <path d="M4 11h16M12 3v8"/><circle cx="8.5" cy="20.5" r="1.5"/><circle cx="15.5" cy="20.5" r="1.5"/>
+        <path d="M8.5 17v2M15.5 17v2"/>
+      </svg>
+    ),
+  },
+  {
+    value: 'WALKING',
+    label: 'Walk',
+    icon: (
+      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="4" r="1"/><path d="M9 20l1-5 2 3 2-8 2 2h3"/><path d="M6.5 12.5L9 10l3 1 2-2"/>
+      </svg>
+    ),
+  },
+];
+
 function ChevronIcon({ open }) {
   return (
     <svg
@@ -74,8 +107,11 @@ export default function App() {
   const [nameA, setNameA] = useState('');
   const [nameB, setNameB] = useState('');
 
+  // --- Travel mode ---
+  const [travelMode, setTravelMode] = useState('DRIVING');
+
   // --- Directions + midpoint ---
-  const { directionsResult, midpoint, loading: dirLoading, error: dirError } = useDirections(pointA, pointB);
+  const { directionsResult, midpoint, loading: dirLoading, error: dirError } = useDirections(pointA, pointB, travelMode);
 
   // --- Nearby places ---
   const [selectedType, setSelectedType] = useState(null);
@@ -123,7 +159,7 @@ export default function App() {
   }, []);
 
   const { places: allPlaces, loading: placesLoading, error: placesError } = useNearbyPlaces(
-    midpoint, pointA, pointB, selectedType
+    midpoint, pointA, pointB, selectedType, travelMode
   );
 
   const nearbyPlaces = useMemo(() => {
@@ -162,7 +198,7 @@ export default function App() {
 
   const handleReset = () => {
     setPointA(null); setPointB(null); setNameA(''); setNameB('');
-    setSelectedType(null); setMinRating(0);
+    setTravelMode('DRIVING'); setSelectedType(null); setMinRating(0);
     setSortBy('popularity'); setRadius(DEFAULT_SEARCH_RADIUS_M);
     setSelectedPlace(null); setBottomOpen(false); setTopOpen(true);
     window.history.replaceState(null, '', window.location.pathname);
@@ -315,6 +351,15 @@ export default function App() {
               <div className="bg-slate-50 px-4 pt-1 pb-4 flex flex-col gap-3 border-t border-slate-200 shadow-[0_6px_12px_rgba(0,0,0,0.1)]">
                 <LocationInput label="Point A" value={nameA} onPlace={handlePlaceA} />
                 <LocationInput label="Point B" value={nameB} onPlace={handlePlaceB} />
+                <div className="flex rounded-xl overflow-hidden border border-slate-200">
+                  {TRAVEL_MODES.map((m) => (
+                    <button key={m.value} onClick={() => setTravelMode(m.value)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition
+                        ${travelMode === m.value ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
+                      {m.icon}{m.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -417,6 +462,15 @@ export default function App() {
           <div className="px-5 py-4 flex flex-col gap-4 bg-slate-50 flex-shrink-0 relative z-10 shadow-[0_4px_10px_rgba(0,0,0,0.08)]">
             <LocationInput label="Point A" value={nameA} onPlace={handlePlaceA} />
             <LocationInput label="Point B" value={nameB} onPlace={handlePlaceB} />
+            <div className="flex rounded-xl overflow-hidden border border-slate-200">
+              {TRAVEL_MODES.map((m) => (
+                <button key={m.value} onClick={() => setTravelMode(m.value)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition
+                    ${travelMode === m.value ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
+                  {m.icon}{m.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Loading / error */}
