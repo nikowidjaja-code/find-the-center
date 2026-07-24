@@ -110,7 +110,7 @@ export default function MapView({
   pointA, pointB, midpoint, radius = 500,
   directionsResult, selectedPlace = null,
 }) {
-  const defaultCenter = { lat: 1.3521, lng: 103.8198 };
+  const defaultCenter = { lat: -2.5, lng: 118 };
 
   const mapCenter =
     midpoint ||
@@ -118,10 +118,12 @@ export default function MapView({
       ? { lat: (pointA.lat + pointB.lat) / 2, lng: (pointA.lng + pointB.lng) / 2 }
       : pointA || pointB || defaultCenter);
 
+  const defaultZoom = (!pointA && !pointB && !midpoint) ? 5 : 12;
+
   return (
     <Map
       defaultCenter={mapCenter}
-      defaultZoom={12}
+      defaultZoom={defaultZoom}
       gestureHandling="greedy"
       disableDefaultUI={false}
       streetViewControl={false}
