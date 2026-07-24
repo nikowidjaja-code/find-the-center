@@ -16,7 +16,7 @@ function MapController({ selectedPlace }) {
   return null;
 }
 
-const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+const MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID';
 
 /**
  * RouteLayer — renders the directions polyline + 500m circle.
@@ -134,7 +134,7 @@ export default function MapView({
 
   return (
     <Map
-      mapId="DEMO_MAP_ID"
+      mapId={MAP_ID}
       defaultCenter={mapCenter}
       defaultZoom={12}
       gestureHandling="greedy"

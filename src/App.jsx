@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import LocationInput from './components/LocationInput.jsx';
 import MapView from './components/MapView.jsx';
@@ -66,6 +66,11 @@ export default function App() {
   const [radius, setRadius] = useState(DEFAULT_SEARCH_RADIUS_M);
   const [selectedPlace, setSelectedPlace] = useState(null);
   const debouncedRadius = useDebounce(radius, RADIUS_DEBOUNCE_MS);
+
+  // Clear the selected place whenever the midpoint moves so stale selections don't persist
+  useEffect(() => {
+    setSelectedPlace(null);
+  }, [midpoint?.lat, midpoint?.lng]);
 
   const { places: allPlaces, loading: placesLoading, error: placesError } = useNearbyPlaces(
     midpoint, pointA, pointB, selectedType

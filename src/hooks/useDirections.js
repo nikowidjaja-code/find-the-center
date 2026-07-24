@@ -37,6 +37,15 @@ export function useDirections(pointA, pointB) {
     // Debounce: wait 350 ms after the last change before firing the API call.
     // Prevents multiple requests when both points update in quick succession.
     const timer = setTimeout(() => {
+      if (
+        Math.abs(pointA.lat - pointB.lat) < 1e-8 &&
+        Math.abs(pointA.lng - pointB.lng) < 1e-8
+      ) {
+        setError('Start and end points must be different.');
+        setLoading(false);
+        return;
+      }
+
       if (!window.google?.maps?.DirectionsService) {
         setError('Google Maps is not loaded yet.');
         return;
