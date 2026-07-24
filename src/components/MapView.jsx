@@ -11,7 +11,7 @@ function MapController({ selectedPlace }) {
   useEffect(() => {
     if (!map || !selectedPlace?.location) return;
     map.panTo({ lat: selectedPlace.location.latitude, lng: selectedPlace.location.longitude });
-    map.setZoom(17);
+    map.setZoom(15);
   }, [map, selectedPlace]);
   return null;
 }

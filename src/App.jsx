@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import LocationInput from './components/LocationInput.jsx';
 import MapView from './components/MapView.jsx';
@@ -193,6 +194,14 @@ export default function App() {
     window.history.replaceState(null, '', window.location.pathname);
   };
 
+  // Preserve scroll position when selecting a place so the list doesn't jump to top
+  const handleSelectPlace = useCallback((place) => {
+    const container = document.querySelector('[data-scroll-preserve]');
+    const saved = container?.scrollTop ?? 0;
+    flushSync(() => setSelectedPlace(place));
+    if (container) container.scrollTop = saved;
+  }, []);
+
   const hasMidpoint = !!midpoint;
   const totalTime = directionsResult?.routes?.[0]?.legs?.[0]?.duration?.text;
   const totalDist = directionsResult?.routes?.[0]?.legs?.[0]?.distance?.text;
@@ -273,7 +282,7 @@ export default function App() {
       )}
       <PlacesList
         places={nearbyPlaces} loading={placesLoading} error={placesError}
-        selectedPlaceId={selectedPlace?.id} onSelectPlace={setSelectedPlace}
+        selectedPlaceId={selectedPlace?.id} onSelectPlace={handleSelectPlace}
       />
       {!pointA && !pointB && (
         <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
@@ -382,7 +391,7 @@ export default function App() {
 
             {/* Sheet content — scrollable */}
             {bottomOpen && (
-              <div className="bg-white overflow-y-auto overflow-x-hidden max-h-[65vh] shadow-lg">
+              <div data-scroll-preserve className="bg-white overflow-y-auto overflow-x-hidden max-h-[65vh] shadow-lg">
                 {filterSection}
                 {placesSection}
                 {/* Compact midpoint info — bottom, low-priority */}
@@ -429,7 +438,7 @@ export default function App() {
         {/* ════════════════════════════════════════
             DESKTOP UI  (hidden on mobile)
         ════════════════════════════════════════ */}
-        <aside className="hidden sm:flex flex-col absolute top-0 left-0 bottom-0 z-10 w-80 md:w-96 bg-white shadow-xl overflow-y-auto overflow-x-hidden">
+        <aside data-scroll-preserve className="hidden sm:flex flex-col absolute top-0 left-0 bottom-0 z-10 w-80 md:w-96 bg-white shadow-xl overflow-y-auto overflow-x-hidden">
 
           {/* Header */}
           <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex-shrink-0">
