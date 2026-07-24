@@ -228,10 +228,12 @@ export default function App() {
 
   return (
     <APIProvider apiKey={API_KEY} libraries={['places']}>
-      <div className="flex flex-col md:flex-row h-screen bg-slate-50 overflow-hidden">
+      <div className="flex flex-col sm:flex-row h-dvh bg-slate-50 overflow-hidden">
 
         {/* ── Sidebar ── */}
-        <aside className="w-full md:w-96 flex-shrink-0 flex flex-col bg-white shadow-lg z-10 overflow-y-auto">
+        {/* Portrait mobile: capped at 55vh so map always gets space below.   */}
+        {/* Landscape / desktop (sm+): full height, fixed width, side-by-side. */}
+        <aside className="w-full sm:w-80 md:w-96 flex-shrink-0 flex flex-col bg-white shadow-lg z-10 overflow-y-auto max-h-[55vh] sm:max-h-none">
 
           {/* Header */}
           <div className="px-5 pt-5 pb-4 border-b border-slate-100">
@@ -454,7 +456,7 @@ export default function App() {
         </aside>
 
         {/* ── Map ── */}
-        <main className="flex-1 min-h-64 md:min-h-0 relative">
+        <main className="flex-1 min-h-0 relative">
           <div className="absolute inset-0">
             <MapView
               pointA={pointA}
