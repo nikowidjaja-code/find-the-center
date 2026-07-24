@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { MAX_NEARBY_PLACES, MAX_SEARCH_RADIUS_M } from '../constants.js';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
 const FETCH_TIMEOUT_MS = 5000;
-const MAX_FETCH_RADIUS = 2000;
+const MAX_FETCH_RADIUS = MAX_SEARCH_RADIUS_M;
 
 const PLACES_FIELD_MASK = [
   'places.displayName',
@@ -65,7 +67,7 @@ export function useNearbyPlaces(midpoint, pointA, pointB, selectedType) {
                 },
               },
               rankPreference: 'POPULARITY',
-              maxResultCount: 20,
+              maxResultCount: MAX_NEARBY_PLACES,
               ...(selectedType && { includedTypes: [selectedType] }),
             }),
             signal: controller.signal,

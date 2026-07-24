@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { findTimeMidpoint } from '../utils/midpoint.js';
+import { DIRECTIONS_DEBOUNCE_MS } from '../constants.js';
 
 const DIRECTIONS_ERRORS = {
   NOT_FOUND: 'One or both locations could not be found.',
@@ -69,7 +70,7 @@ export function useDirections(pointA, pointB) {
           setError(DIRECTIONS_ERRORS[status] ?? `Could not get directions: ${status}`);
         }
       });
-    }, 350);
+    }, DIRECTIONS_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
   }, [

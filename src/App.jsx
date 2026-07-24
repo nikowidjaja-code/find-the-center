@@ -6,6 +6,12 @@ import PlacesList from './components/PlacesList.jsx';
 import { useDirections } from './hooks/useDirections.js';
 import { useDebounce } from './hooks/useDebounce.js';
 import { useNearbyPlaces } from './hooks/useNearbyPlaces.js';
+import {
+  DEFAULT_SEARCH_RADIUS_M,
+  MIN_SEARCH_RADIUS_M,
+  MAX_SEARCH_RADIUS_M,
+  RADIUS_DEBOUNCE_MS,
+} from './constants.js';
 
 const GEOCODE_TIMEOUT_MS = 5000;
 
@@ -57,9 +63,9 @@ export default function App() {
 
   // --- Nearby places ---
   const [selectedType, setSelectedType] = useState(null);
-  const [radius, setRadius] = useState(500);
+  const [radius, setRadius] = useState(DEFAULT_SEARCH_RADIUS_M);
   const [selectedPlace, setSelectedPlace] = useState(null);
-  const debouncedRadius = useDebounce(radius, 400);
+  const debouncedRadius = useDebounce(radius, RADIUS_DEBOUNCE_MS);
 
   const { places: allPlaces, loading: placesLoading, error: placesError } = useNearbyPlaces(
     midpoint, pointA, pointB, selectedType
@@ -132,7 +138,7 @@ export default function App() {
     setNearbyPlaces([]);
     setPlacesError(null);
     setSelectedType(null);
-    setRadius(500);
+    setRadius(DEFAULT_SEARCH_RADIUS_M);
     setSelectedPlace(null);
   };
 
@@ -246,8 +252,8 @@ export default function App() {
               <input
                 id="radius-slider"
                 type="range"
-                min={100}
-                max={2000}
+                min={MIN_SEARCH_RADIUS_M}
+                max={MAX_SEARCH_RADIUS_M}
                 step={100}
                 value={radius}
                 onChange={(e) => setRadius(Number(e.target.value))}
