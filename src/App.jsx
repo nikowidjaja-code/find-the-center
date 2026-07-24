@@ -190,14 +190,11 @@ export default function App() {
     setPointB({ lat, lng }); setNameB(name);
   }, []);
 
-  const handleShare = useCallback(() => {
-    const params = new URLSearchParams({
-      alat: pointA.lat.toFixed(6), alng: pointA.lng.toFixed(6), an: nameA,
-      blat: pointB.lat.toFixed(6), blng: pointB.lng.toFixed(6), bn: nameB,
-    });
-    navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?${params}`)
+  const handleSharePlace = useCallback(() => {
+    if (!selectedPlace?.googleMapsUri) return;
+    navigator.clipboard.writeText(selectedPlace.googleMapsUri)
       .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
-  }, [pointA, nameA, pointB, nameB]);
+  }, [selectedPlace]);
 
   const handleReset = () => {
     setPointA(null); setPointB(null); setNameA(''); setNameB('');
@@ -324,7 +321,7 @@ export default function App() {
         <div className="sm:hidden absolute inset-0 pointer-events-none">
 
           {/* ── Top panel ── */}
-          <div className="absolute top-0 left-0 right-0 z-20 pointer-events-auto">
+          <div className="absolute top-0 left-0 right-0 z-10 pointer-events-auto">
 
             {/* Header bar — always visible */}
             <div className="bg-white shadow-sm px-4 py-3 flex items-center justify-between">
@@ -336,8 +333,8 @@ export default function App() {
                 <ChevronIcon open={topOpen} />
               </button>
               <div className="flex items-center gap-3">
-                {pointA && pointB && (
-                  <button onClick={handleShare} className="text-xs text-indigo-500 font-medium">
+                {selectedPlace && (
+                  <button onClick={handleSharePlace} className="text-xs text-indigo-500 font-medium">
                     {copied ? 'Copied!' : 'Share ↗'}
                   </button>
                 )}
@@ -446,8 +443,8 @@ export default function App() {
                 <p className="text-xs text-slate-400 mt-0.5">Time-equidistant meeting point finder</p>
               </div>
               <div className="flex items-center gap-2">
-                {pointA && pointB && (
-                  <button onClick={handleShare} className="text-xs text-indigo-500 hover:text-indigo-700 transition font-medium">
+                {selectedPlace && (
+                  <button onClick={handleSharePlace} className="text-xs text-indigo-500 hover:text-indigo-700 transition font-medium">
                     {copied ? 'Copied!' : 'Share ↗'}
                   </button>
                 )}
