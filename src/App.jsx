@@ -338,7 +338,7 @@ export default function App() {
 
             {/* Collapsible inputs */}
             {topOpen && (
-              <div className="bg-white/95 backdrop-blur-sm px-4 pt-1 pb-4 flex flex-col gap-3 shadow-lg border-t border-slate-100">
+              <div className="bg-slate-50/97 backdrop-blur-sm px-4 pt-1 pb-4 flex flex-col gap-3 shadow-lg border-t-2 border-slate-200">
                 <LocationInput
                   label="Point A" value={nameA} onPlace={handlePlaceA}
                   isActive={activeInput === 'A'} onFocus={() => setActiveInput('A')}
@@ -455,7 +455,7 @@ export default function App() {
           </div>
 
           {/* Inputs */}
-          <div className="px-5 py-4 flex flex-col gap-4 border-b border-slate-100 flex-shrink-0">
+          <div className="px-5 py-4 flex flex-col gap-4 bg-slate-50 border-b-2 border-slate-200 flex-shrink-0">
             <LocationInput label="Point A" value={nameA} onPlace={handlePlaceA} isActive={activeInput === 'A'} onFocus={() => setActiveInput('A')} />
             <LocationInput label="Point B" value={nameB} onPlace={handlePlaceB} isActive={activeInput === 'B'} onFocus={() => setActiveInput('B')} />
             {activeInput && (
