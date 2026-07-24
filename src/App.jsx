@@ -129,9 +129,9 @@ export default function App() {
   // --- Share state ---
   const [copied, setCopied] = useState(false);
 
-  // Auto-open bottom sheet when midpoint is found, collapse inputs to avoid overlap
+  // Auto-open bottom sheet when midpoint is found
   useEffect(() => {
-    if (midpoint) { setBottomOpen(true); setTopOpen(false); }
+    if (midpoint) setBottomOpen(true);
   }, [midpoint?.lat, midpoint?.lng]);
 
   // Clear selected place whenever midpoint changes
@@ -318,15 +318,15 @@ export default function App() {
         {/* ════════════════════════════════════════
             MOBILE UI  (hidden on sm+)
         ════════════════════════════════════════ */}
-        <div className="sm:hidden absolute inset-0 pointer-events-none">
+        <div className="sm:hidden absolute inset-0 pointer-events-none flex flex-col">
 
           {/* ── Top panel ── */}
-          <div className="absolute top-0 left-0 right-0 z-30 pointer-events-auto">
+          <div className="flex-shrink-0 pointer-events-auto relative z-30">
 
             {/* Header bar — always visible */}
             <div className="bg-white shadow-sm px-4 py-3 flex items-center justify-between">
               <button
-                onClick={() => { setTopOpen((v) => { if (!v) setBottomOpen(false); return !v; }); }}
+                onClick={() => setTopOpen((v) => !v)}
                 className="flex items-center gap-2 text-left"
               >
                 <span className="text-sm font-bold text-slate-800">Find the Center</span>
@@ -348,7 +348,7 @@ export default function App() {
 
             {/* Collapsible inputs */}
             {topOpen && (
-              <div className="bg-slate-50 px-4 pt-1 pb-4 flex flex-col gap-3 border-t border-slate-200 shadow-[0_6px_12px_rgba(0,0,0,0.1)]">
+              <div className="bg-slate-50 px-4 pt-1 pb-4 flex flex-col gap-3 border-t border-slate-200">
                 <LocationInput label="Point A" value={nameA} onPlace={handlePlaceA} />
                 <LocationInput label="Point B" value={nameB} onPlace={handlePlaceB} />
                 <div className="flex rounded-xl overflow-hidden border border-slate-200">
@@ -380,32 +380,13 @@ export default function App() {
             )}
           </div>
 
-          {/* ── Bottom sheet ── */}
-          <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-auto">
+          {/* ── Places panel — anchored directly below inputs ── */}
+          <div className="flex-shrink-0 pointer-events-auto relative z-20">
 
-            {/* Sheet content — always in DOM so scroll position survives open/close */}
-            <div
-              data-scroll-preserve
-              className={`bg-white overflow-y-auto overflow-x-hidden max-h-[65vh] shadow-lg ${bottomOpen ? '' : 'hidden'}`}
-            >
-              {filterSection}
-              {placesSection}
-              {/* Compact midpoint info — bottom, low-priority */}
-              {hasMidpoint && !dirLoading && (
-                <div className="px-5 py-2.5 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
-                  <span className="text-green-400">★</span>
-                  <span>{midpoint.lat.toFixed(4)}, {midpoint.lng.toFixed(4)}</span>
-                  {(totalTime || totalDist) && (
-                    <span className="ml-auto">{totalDist} · {totalTime}</span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Handle bar — always visible, toggles sheet */}
+            {/* Handle bar — toggles the list */}
             <button
-              onClick={() => { setBottomOpen((v) => { if (!v) setTopOpen(false); return !v; }); }}
-              className="w-full bg-white border-t border-slate-100 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-5 py-3 flex items-center justify-between"
+              onClick={() => setBottomOpen((v) => !v)}
+              className="w-full bg-white border-t border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.08)] px-5 py-3 flex items-center justify-between"
             >
               <div className="flex items-center gap-2">
                 {hasMidpoint ? (
@@ -422,11 +403,33 @@ export default function App() {
                 )}
               </div>
               <div className="flex items-center gap-1.5 text-slate-400">
-                <span className="text-xs">{bottomOpen ? 'Close' : 'Show'}</span>
+                <span className="text-xs">{bottomOpen ? 'Hide' : 'Show'}</span>
                 <ChevronIcon open={bottomOpen} />
               </div>
             </button>
+
+            {/* Sheet content — always in DOM so scroll position survives open/close */}
+            <div
+              data-scroll-preserve
+              className={`bg-white overflow-y-auto overflow-x-hidden max-h-[55vh] shadow-lg ${bottomOpen ? '' : 'hidden'}`}
+            >
+              {filterSection}
+              {placesSection}
+              {/* Compact midpoint info — bottom, low-priority */}
+              {hasMidpoint && !dirLoading && (
+                <div className="px-5 py-2.5 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
+                  <span className="text-green-400">★</span>
+                  <span>{midpoint.lat.toFixed(4)}, {midpoint.lng.toFixed(4)}</span>
+                  {(totalTime || totalDist) && (
+                    <span className="ml-auto">{totalDist} · {totalTime}</span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Transparent flex-1 gap — shows the map below */}
+          <div className="flex-1" />
 
         </div>{/* end mobile UI */}
 
