@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { flushSync } from 'react-dom';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import LocationInput from './components/LocationInput.jsx';
 import MapView from './components/MapView.jsx';
@@ -198,14 +197,6 @@ export default function App() {
     window.history.replaceState(null, '', window.location.pathname);
   };
 
-  // Preserve scroll position when selecting a place so the list doesn't jump to top
-  const handleSelectPlace = useCallback((place) => {
-    const container = document.querySelector('[data-scroll-preserve]');
-    const saved = container?.scrollTop ?? 0;
-    flushSync(() => setSelectedPlace(place));
-    if (container) container.scrollTop = saved;
-  }, []);
-
   const hasMidpoint = !!midpoint;
   const totalTime = directionsResult?.routes?.[0]?.legs?.[0]?.duration?.text;
   const totalDist = directionsResult?.routes?.[0]?.legs?.[0]?.distance?.text;
@@ -286,7 +277,7 @@ export default function App() {
       )}
       <PlacesList
         places={nearbyPlaces} loading={placesLoading} error={placesError}
-        selectedPlaceId={selectedPlace?.id} onSelectPlace={handleSelectPlace}
+        selectedPlaceId={selectedPlace?.id} onSelectPlace={setSelectedPlace}
       />
       {!pointA && !pointB && (
         <div className="flex flex-col items-center justify-center py-10 text-center gap-3">

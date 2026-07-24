@@ -1,14 +1,22 @@
+import { useRef, useLayoutEffect, useCallback } from 'react';
 import PlaceCard from './PlaceCard.jsx';
 
-/**
- * PlacesList — renders a scrollable list of PlaceCard items.
- *
- * Props:
- *   places  — array of place objects from the Places API
- *   loading — boolean
- *   error   — string or null
- */
 export default function PlacesList({ places, loading, error, selectedPlaceId, onSelectPlace }) {
+  const listRef = useRef(null);
+  const savedScrollRef = useRef(0);
+
+  // Save scroll at click time, then restore after React commits the DOM
+  const handleSelect = useCallback((place) => {
+    const container = listRef.current?.closest('[data-scroll-preserve]');
+    if (container) savedScrollRef.current = container.scrollTop;
+    onSelectPlace(place);
+  }, [onSelectPlace]);
+
+  useLayoutEffect(() => {
+    const container = listRef.current?.closest('[data-scroll-preserve]');
+    if (container) container.scrollTop = savedScrollRef.current;
+  }, [selectedPlaceId]);
+
   if (loading) {
     return (
       <div className="flex flex-col gap-2 mt-2">
@@ -32,16 +40,16 @@ export default function PlacesList({ places, loading, error, selectedPlaceId, on
   }
 
   return (
-    <div className="flex flex-col gap-2 mt-2">
+    <div ref={listRef} className="flex flex-col gap-2 mt-2">
       <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">
         {places.length} place{places.length !== 1 ? 's' : ''} near the midpoint
       </p>
-      {places.map((place, idx) => (
+      {places.map((place) => (
         <PlaceCard
           key={place.id}
           place={place}
           isSelected={place.id === selectedPlaceId}
-          onSelect={() => onSelectPlace(place)}
+          onSelect={() => handleSelect(place)}
         />
       ))}
     </div>
