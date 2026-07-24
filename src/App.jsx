@@ -153,9 +153,9 @@ export default function App() {
     setSelectedPlace(null);
   }, [midpoint?.lat, midpoint?.lng]);
 
-  // Close mobile bottom sheet when a place is selected so the map is visible
+  // When a place is selected: collapse inputs + close places list so the map + card are visible
   useEffect(() => {
-    if (selectedPlace) setBottomOpen(false);
+    if (selectedPlace) { setBottomOpen(false); setTopOpen(false); }
   }, [selectedPlace]);
 
   // Read URL params on first load (shared links)
