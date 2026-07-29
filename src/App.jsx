@@ -117,6 +117,7 @@ export default function App() {
   const debouncedRadius = useDebounce(radius, RADIUS_DEBOUNCE_MS);
 
   // --- Mobile UI state ---
+  const [topOpen, setTopOpen] = useState(true);
   const [bottomOpen, setBottomOpen] = useState(false);
 
   // --- Share state ---
@@ -166,10 +167,9 @@ export default function App() {
     setSelectedPlace(null);
   }, [center?.lat, center?.lng]);
 
-  // When a place is selected: close places list so the map + card are visible.
-  // (Mobile header/toggle is hidden, so inputs stay visible rather than collapse.)
+  // When a place is selected: collapse inputs + close places list so the map + card are visible
   useEffect(() => {
-    if (selectedPlace) setBottomOpen(false);
+    if (selectedPlace) { setBottomOpen(false); setTopOpen(false); }
   }, [selectedPlace]);
 
   // Read URL params on first load (shared links): p0=lat,lng & n0=name, …
@@ -236,7 +236,7 @@ export default function App() {
     setPoints([emptyPoint(), emptyPoint()]);
     setTravelMode('DRIVING'); setSelectedType(null); setMinRating(0);
     setSortBy('balanced'); setRadius(DEFAULT_SEARCH_RADIUS_M);
-    setSelectedPlace(null); setBottomOpen(false);
+    setSelectedPlace(null); setBottomOpen(false); setTopOpen(true);
     window.history.replaceState(null, '', window.location.pathname);
   };
 
@@ -397,28 +397,38 @@ export default function App() {
         ════════════════════════════════════════ */}
         <div className="sm:hidden absolute inset-0 pointer-events-none flex flex-col">
 
-          {/* ── Top panel — branding header hidden on mobile to save space ── */}
+          {/* ── Top panel ── */}
           <div className="flex-shrink-0 pointer-events-auto relative z-30">
-            {/* Inputs + a compact brand / Reset / Share row */}
-            <div className="bg-slate-50 px-4 pt-2.5 pb-4 flex flex-col gap-3 shadow-sm">
-              <div className="flex items-center gap-1.5 -mb-1">
-                <span className="text-green-500 text-sm leading-none">★</span>
-                <span className="text-xs font-bold text-slate-700 tracking-tight">Find the Center</span>
-                <div className="ml-auto flex items-center gap-3">
-                  {selectedPlace && (
-                    <button onClick={handleSharePlace} className="text-xs text-indigo-500 font-medium">
-                      {copied ? 'Copied!' : 'Share ↗'}
-                    </button>
-                  )}
-                  {anyFilled && (
-                    <button onClick={handleReset} className="text-xs text-slate-400 hover:text-rose-500 font-medium">
-                      Reset
-                    </button>
-                  )}
-                </div>
+
+            {/* Header bar — always visible */}
+            <div className="bg-white shadow-sm px-4 py-3 flex items-center justify-between">
+              <button
+                onClick={() => setTopOpen((v) => !v)}
+                className="flex items-center gap-2 text-left"
+              >
+                <span className="text-sm font-bold text-slate-800">Find the Center</span>
+                <ChevronIcon open={topOpen} />
+              </button>
+              <div className="flex items-center gap-3">
+                {selectedPlace && (
+                  <button onClick={handleSharePlace} className="text-xs text-indigo-500 font-medium">
+                    {copied ? 'Copied!' : 'Share ↗'}
+                  </button>
+                )}
+                {anyFilled && (
+                  <button onClick={handleReset} className="text-xs text-slate-400 hover:text-rose-500 font-medium">
+                    Reset
+                  </button>
+                )}
               </div>
-              {inputsBlock}
             </div>
+
+            {/* Collapsible inputs */}
+            {topOpen && (
+              <div className="bg-slate-50 px-4 pt-1 pb-4 flex flex-col gap-3 border-t border-slate-200">
+                {inputsBlock}
+              </div>
+            )}
           </div>
 
           {/* ── Selected place card — shown above the places panel ── */}
@@ -485,8 +495,8 @@ export default function App() {
         ════════════════════════════════════════ */}
         <aside data-scroll-preserve className="hidden sm:flex flex-col absolute top-0 left-0 bottom-0 z-10 w-80 md:w-96 bg-white shadow-xl overflow-y-auto overflow-x-hidden">
 
-          {/* Header — branding hidden on short viewports (landscape phones) */}
-          <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex-shrink-0 [@media(max-height:600px)]:hidden">
+          {/* Header */}
+          <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-lg font-bold text-slate-800 tracking-tight">Find the Center</h1>
@@ -505,25 +515,6 @@ export default function App() {
                   </button>
                 )}
               </div>
-            </div>
-          </div>
-
-          {/* Compact brand + Reset/Share row — only when the header is hidden (short viewport) */}
-          <div className="hidden [@media(max-height:600px)]:flex px-5 py-2 border-b border-slate-100 flex-shrink-0 items-center gap-1.5">
-            <span className="text-green-500 text-sm leading-none">★</span>
-            <span className="text-xs font-bold text-slate-700 tracking-tight">Find the Center</span>
-            <div className="ml-auto flex items-center gap-3">
-              {selectedPlace && (
-                <button onClick={handleSharePlace} className="text-xs text-indigo-500 hover:text-indigo-700 transition font-medium">
-                  {copied ? 'Copied!' : 'Share ↗'}
-                </button>
-              )}
-              {anyFilled && (
-                <button onClick={handleReset} aria-label="Reset all points and filters"
-                  className="text-xs text-slate-400 hover:text-rose-500 transition font-medium">
-                  Reset
-                </button>
-              )}
             </div>
           </div>
 
