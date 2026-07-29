@@ -11,12 +11,14 @@ export const MAX_NEARBY_PLACES = 20;
 export const MIN_POINTS = 2;
 export const MAX_POINTS = 5;
 
-// Per-point marker colors (fill / border), indexed 0..MAX_POINTS-1.
-// Labels A–E keep the original A/B convention.
+// Per-point marker colors, indexed 0..MAX_POINTS-1. Labels A–E.
+// Vivid, high-contrast hues chosen to stand apart from Google's built-in
+// red pins and blue location dot. `dot` is the matching Tailwind class used
+// in the list/cards. Map pins add a white halo ring + shadow (see MapView).
 export const POINT_STYLES = [
-  { label: 'A', color: '#6366f1', border: '#4338ca', dot: 'bg-indigo-500' },
-  { label: 'B', color: '#f43f5e', border: '#be123c', dot: 'bg-rose-500'   },
-  { label: 'C', color: '#10b981', border: '#047857', dot: 'bg-emerald-500'},
-  { label: 'D', color: '#f59e0b', border: '#b45309', dot: 'bg-amber-500'  },
-  { label: 'E', color: '#8b5cf6', border: '#6d28d9', dot: 'bg-violet-500' },
+  { label: 'A', color: '#4f46e5', dot: 'bg-indigo-600' },
+  { label: 'B', color: '#db2777', dot: 'bg-pink-600'   },
+  { label: 'C', color: '#0d9488', dot: 'bg-teal-600'   },
+  { label: 'D', color: '#d97706', dot: 'bg-amber-600'  },
+  { label: 'E', color: '#7c3aed', dot: 'bg-violet-600' },
 ];

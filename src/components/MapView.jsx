@@ -2,21 +2,26 @@ import { useEffect, useRef } from 'react';
 import { Map, useMap } from '@vis.gl/react-google-maps';
 import { POINT_STYLES } from '../constants.js';
 
-// Renders a custom SVG pin using the legacy Marker API (no Map ID required)
-function PinMarker({ position, color, border, label, scale = 1, zIndex = 0 }) {
+// Renders a custom teardrop SVG pin using the legacy Marker API (no Map ID
+// required). White halo ring + drop shadow make it read clearly as a placed
+// marker and stand apart from Google's built-in red pins / blue location dot.
+function PinMarker({ position, color, label, scale = 1, zIndex = 0 }) {
   const map = useMap();
   const markerRef = useRef(null);
 
   useEffect(() => {
     if (!map || !position) return;
 
-    const size = Math.round(36 * scale);
-    const half = size / 2;
-    const r = half - 3;
-    const svg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="${half}" cy="${half}" r="${r}" fill="${color}" stroke="${border}" stroke-width="2.5"/>
-      <text x="${half}" y="${half + 5}" text-anchor="middle" fill="white" font-weight="bold"
-        font-size="${Math.round(14 * scale)}" font-family="system-ui,sans-serif">${label}</text>
+    const w = Math.round(32 * scale);
+    const h = Math.round(42 * scale);
+    // viewBox 24x32: head centered at (12,12), tip at ~(12,29)
+    const svg = `<svg width="${w}" height="${h}" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="12" cy="30" rx="4.5" ry="1.5" fill="rgba(0,0,0,0.30)"/>
+      <path d="M12 1.5C6.2 1.5 1.5 6.2 1.5 12c0 7.7 10.5 17 10.5 17S22.5 19.7 22.5 12C22.5 6.2 17.8 1.5 12 1.5z"
+        fill="${color}" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>
+      <circle cx="12" cy="12" r="6.6" fill="rgba(255,255,255,0.22)"/>
+      <text x="12" y="15.4" text-anchor="middle" fill="#ffffff" font-weight="700"
+        font-size="9.5" font-family="system-ui,sans-serif">${label}</text>
     </svg>`;
     const url = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 
@@ -29,8 +34,9 @@ function PinMarker({ position, color, border, label, scale = 1, zIndex = 0 }) {
         zIndex,
         icon: {
           url,
-          scaledSize: new window.google.maps.Size(size, size),
-          anchor: new window.google.maps.Point(half, half),
+          scaledSize: new window.google.maps.Size(w, h),
+          // Anchor at the tip so the pin points exactly at the coordinate
+          anchor: new window.google.maps.Point(w / 2, Math.round(h * 0.9)),
         },
       });
     }
@@ -40,7 +46,7 @@ function PinMarker({ position, color, border, label, scale = 1, zIndex = 0 }) {
       markerRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, position?.lat, position?.lng, color, border, label, scale, zIndex]);
+  }, [map, position?.lat, position?.lng, color, label, scale, zIndex]);
 
   return null;
 }
@@ -118,22 +124,21 @@ export default function MapView({
             key={i}
             position={p}
             color={POINT_STYLES[i].color}
-            border={POINT_STYLES[i].border}
             label={POINT_STYLES[i].label}
-            scale={1.1}
+            scale={1.15}
             zIndex={10}
           />
         ) : null
       )}
 
       {center && (
-        <PinMarker position={center} color="#22c55e" border="#15803d" label="★" scale={1.15} zIndex={20} />
+        <PinMarker position={center} color="#16a34a" label="★" scale={1.35} zIndex={20} />
       )}
 
       {selectedPlace?.location && (
         <PinMarker
           position={{ lat: selectedPlace.location.latitude, lng: selectedPlace.location.longitude }}
-          color="#f97316" border="#ea580c" label="•" scale={1.2} zIndex={30}
+          color="#ea580c" label="•" scale={1.3} zIndex={30}
         />
       )}
 
