@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Map, useMap } from '@vis.gl/react-google-maps';
+import { POINT_STYLES } from '../constants.js';
 
 // Renders a custom SVG pin using the legacy Marker API (no Map ID required)
 function PinMarker({ position, color, border, label, scale = 1, zIndex = 0 }) {
@@ -57,68 +58,50 @@ function MapController({ selectedPlace }) {
   return null;
 }
 
-function RouteLayer({ directionsResult, midpoint, radius = 500 }) {
+// Green search circle drawn around the computed center point
+function CenterCircle({ center, radius = 500 }) {
   const map = useMap();
-  const rendererRef = useRef(null);
   const circleRef = useRef(null);
 
   useEffect(() => {
     if (!map) return;
-    if (!directionsResult) {
-      rendererRef.current?.setMap(null);
-      rendererRef.current = null;
-      return;
-    }
-    if (!rendererRef.current) {
-      rendererRef.current = new window.google.maps.DirectionsRenderer({
-        suppressMarkers: true,
-        polylineOptions: { strokeColor: '#6366f1', strokeWeight: 5, strokeOpacity: 0.8 },
-      });
-    }
-    rendererRef.current.setMap(map);
-    rendererRef.current.setDirections(directionsResult);
-  }, [map, directionsResult]);
-
-  useEffect(() => {
-    if (!map) return;
-    if (!midpoint) {
+    if (!center) {
       circleRef.current?.setMap(null);
       circleRef.current = null;
       return;
     }
     if (circleRef.current) {
-      circleRef.current.setCenter(midpoint);
+      circleRef.current.setCenter(center);
       circleRef.current.setRadius(radius);
     } else {
       circleRef.current = new window.google.maps.Circle({
-        center: midpoint, radius,
+        center, radius,
         strokeColor: '#22c55e', strokeOpacity: 0.7, strokeWeight: 2,
         fillColor: '#22c55e', fillOpacity: 0.08, map,
       });
     }
-  }, [map, midpoint?.lat, midpoint?.lng, radius]);
+  }, [map, center?.lat, center?.lng, radius]);
 
-  useEffect(() => () => {
-    rendererRef.current?.setMap(null);
-    circleRef.current?.setMap(null);
-  }, []);
-
+  useEffect(() => () => circleRef.current?.setMap(null), []);
   return null;
 }
 
 export default function MapView({
-  pointA, pointB, midpoint, radius = 500,
-  directionsResult, selectedPlace = null,
+  points = [], center, radius = 500, selectedPlace = null,
 }) {
   const defaultCenter = { lat: 2, lng: 110 };
+  const filled = points.filter(Boolean);
 
   const mapCenter =
-    midpoint ||
-    (pointA && pointB
-      ? { lat: (pointA.lat + pointB.lat) / 2, lng: (pointA.lng + pointB.lng) / 2 }
-      : pointA || pointB || defaultCenter);
+    center ||
+    (filled.length
+      ? {
+          lat: filled.reduce((s, p) => s + p.lat, 0) / filled.length,
+          lng: filled.reduce((s, p) => s + p.lng, 0) / filled.length,
+        }
+      : defaultCenter);
 
-  const defaultZoom = (!pointA && !pointB && !midpoint) ? 4 : 12;
+  const defaultZoom = (filled.length === 0 && !center) ? 4 : 12;
 
   return (
     <Map
@@ -129,8 +112,24 @@ export default function MapView({
       streetViewControl={false}
       style={{ width: '100%', height: '100%' }}
     >
-      {pointA && <PinMarker position={pointA} color="#6366f1" border="#4338ca" label="A" scale={1.1} zIndex={10} />}
-      {pointB && <PinMarker position={pointB} color="#f43f5e" border="#be123c" label="B" scale={1.1} zIndex={10} />}
+      {points.map((p, i) =>
+        p ? (
+          <PinMarker
+            key={i}
+            position={p}
+            color={POINT_STYLES[i].color}
+            border={POINT_STYLES[i].border}
+            label={POINT_STYLES[i].label}
+            scale={1.1}
+            zIndex={10}
+          />
+        ) : null
+      )}
+
+      {center && (
+        <PinMarker position={center} color="#22c55e" border="#15803d" label="★" scale={1.15} zIndex={20} />
+      )}
+
       {selectedPlace?.location && (
         <PinMarker
           position={{ lat: selectedPlace.location.latitude, lng: selectedPlace.location.longitude }}
@@ -138,7 +137,7 @@ export default function MapView({
         />
       )}
 
-      <RouteLayer directionsResult={directionsResult} midpoint={midpoint} radius={radius} />
+      <CenterCircle center={center} radius={radius} />
       <MapController selectedPlace={selectedPlace} />
     </Map>
   );

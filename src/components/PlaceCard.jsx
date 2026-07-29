@@ -1,4 +1,5 @@
 import { calcFairness } from '../utils/fairness.js';
+import { POINT_STYLES } from '../constants.js';
 
 /**
  * PlaceCard — displays a single nearby place result.
@@ -6,28 +7,22 @@ import { calcFairness } from '../utils/fairness.js';
  * Props:
  *   place — a place object from the Places API (New) response
  */
-function TravelRow({ fromA, fromB }) {
-  const tA = fromA?.status === 'OK' ? fromA.duration.text : null;
-  const tB = fromB?.status === 'OK' ? fromB.duration.text : null;
-  const fairness = calcFairness(fromA, fromB);
+function TravelRow({ from = [] }) {
+  const times = from.map((e) => (e?.status === 'OK' ? e.duration.text : null));
+  const fairness = calcFairness(from);
   const fairColor = fairness === null ? '' : fairness >= 80 ? 'text-green-600' : fairness >= 60 ? 'text-amber-500' : 'text-rose-500';
 
-  if (!tA && !tB) return null;
+  if (!times.some(Boolean)) return null;
   return (
     <div className="flex items-center gap-3 pt-1.5 mt-0.5 border-t border-slate-100 flex-wrap">
-      {tA && (
-        <span className="flex items-center gap-1 text-xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
-          <span className="text-slate-500">A:</span>
-          <span className="font-semibold text-slate-700">{tA}</span>
-        </span>
-      )}
-      {tB && (
-        <span className="flex items-center gap-1 text-xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0" />
-          <span className="text-slate-500">B:</span>
-          <span className="font-semibold text-slate-700">{tB}</span>
-        </span>
+      {times.map((t, i) =>
+        t ? (
+          <span key={i} className="flex items-center gap-1 text-xs">
+            <span className={`w-1.5 h-1.5 rounded-full ${POINT_STYLES[i].dot} flex-shrink-0`} />
+            <span className="text-slate-500">{POINT_STYLES[i].label}:</span>
+            <span className="font-semibold text-slate-700">{t}</span>
+          </span>
+        ) : null
       )}
       {fairness !== null && (
         <span className={`text-xs font-medium ${fairColor}`}>⚖ {fairness}%</span>
@@ -137,7 +132,7 @@ export default function PlaceCard({ place, isSelected, onSelect }) {
         </div>
       )}
 
-      <TravelRow fromA={place.fromA} fromB={place.fromB} />
+      <TravelRow from={place.from} />
     </div>
   );
 }

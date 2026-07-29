@@ -42,7 +42,7 @@ export default function PlacesList({ places, loading, error, selectedPlaceId, on
   return (
     <div ref={listRef} className="flex flex-col gap-2 mt-2">
       <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">
-        {places.length} place{places.length !== 1 ? 's' : ''} near the midpoint
+        {places.length} place{places.length !== 1 ? 's' : ''} near the center
       </p>
       {places.map((place) => (
         <PlaceCard

@@ -1,4 +1,5 @@
 import { calcFairness } from '../utils/fairness.js';
+import { POINT_STYLES } from '../constants.js';
 
 export default function SelectedPlaceCard({ place, onDismiss }) {
   const name = place.displayName?.text || 'Unknown place';
@@ -7,12 +8,15 @@ export default function SelectedPlaceCard({ place, onDismiss }) {
   const ratingCount = place.userRatingCount;
   const mapsUri = place.googleMapsUri || '';
 
-  const timeA = place.fromA?.status === 'OK' ? place.fromA.duration.text : null;
-  const distA = place.fromA?.status === 'OK' ? place.fromA.distance.text : null;
-  const timeB = place.fromB?.status === 'OK' ? place.fromB.duration.text : null;
-  const distB = place.fromB?.status === 'OK' ? place.fromB.distance.text : null;
+  const from = place.from ?? [];
+  const legs = from.map((e, i) => ({
+    label: POINT_STYLES[i].label,
+    dot: POINT_STYLES[i].dot,
+    time: e?.status === 'OK' ? e.duration.text : null,
+    dist: e?.status === 'OK' ? e.distance.text : null,
+  })).filter((l) => l.time);
 
-  const fairness = calcFairness(place.fromA, place.fromB);
+  const fairness = calcFairness(from);
   const fairnessColor =
     fairness === null ? '' :
     fairness >= 80 ? 'text-green-600' :
@@ -56,24 +60,16 @@ export default function SelectedPlaceCard({ place, onDismiss }) {
       )}
 
       {/* Travel times */}
-      {(timeA || timeB) && (
+      {legs.length > 0 && (
         <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3">
-          {timeA && (
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0" />
-              <span className="text-slate-500">From A:</span>
-              <span className="font-semibold text-slate-700">{timeA}</span>
-              {distA && <span className="text-slate-400">· {distA}</span>}
+          {legs.map((l) => (
+            <div key={l.label} className="flex items-center gap-1.5 text-xs">
+              <span className={`w-2 h-2 rounded-full ${l.dot} flex-shrink-0`} />
+              <span className="text-slate-500">From {l.label}:</span>
+              <span className="font-semibold text-slate-700">{l.time}</span>
+              {l.dist && <span className="text-slate-400">· {l.dist}</span>}
             </div>
-          )}
-          {timeB && (
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0" />
-              <span className="text-slate-500">From B:</span>
-              <span className="font-semibold text-slate-700">{timeB}</span>
-              {distB && <span className="text-slate-400">· {distB}</span>}
-            </div>
-          )}
+          ))}
           {fairness !== null && (
             <div className={`flex items-center gap-1 text-xs font-medium ${fairnessColor}`}>
               <span>⚖</span>

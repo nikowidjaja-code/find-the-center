@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useApiIsLoaded } from '@vis.gl/react-google-maps';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 
-export default function LocationInput({ label, value, onPlace }) {
+export default function LocationInput({ label, value, onPlace, dotColor = 'bg-indigo-500', onRemove }) {
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const [inputValue, setInputValue] = useState(value || '');
@@ -42,8 +42,6 @@ export default function LocationInput({ label, value, onPlace }) {
     });
   };
 
-  const dotColor = label === 'Point A' ? 'bg-indigo-500' : 'bg-rose-500';
-
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
@@ -51,6 +49,17 @@ export default function LocationInput({ label, value, onPlace }) {
         <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
           {label}
         </label>
+        {onRemove && (
+          <button
+            onClick={onRemove}
+            aria-label={`Remove ${label}`}
+            className="ml-auto text-slate-300 hover:text-rose-500 transition p-0.5"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="flex gap-2">
