@@ -399,10 +399,12 @@ export default function App() {
 
           {/* ── Top panel — branding header hidden on mobile to save space ── */}
           <div className="flex-shrink-0 pointer-events-auto relative z-30">
-            {/* Inputs + a compact Reset/Share row (no branding title) */}
-            <div className="bg-slate-50 px-4 pt-3 pb-4 flex flex-col gap-3 shadow-sm">
-              {(anyFilled || selectedPlace) && (
-                <div className="flex items-center justify-end gap-3 -mb-1">
+            {/* Inputs + a compact brand / Reset / Share row */}
+            <div className="bg-slate-50 px-4 pt-2.5 pb-4 flex flex-col gap-3 shadow-sm">
+              <div className="flex items-center gap-1.5 -mb-1">
+                <span className="text-green-500 text-sm leading-none">★</span>
+                <span className="text-xs font-bold text-slate-700 tracking-tight">Find the Center</span>
+                <div className="ml-auto flex items-center gap-3">
                   {selectedPlace && (
                     <button onClick={handleSharePlace} className="text-xs text-indigo-500 font-medium">
                       {copied ? 'Copied!' : 'Share ↗'}
@@ -414,7 +416,7 @@ export default function App() {
                     </button>
                   )}
                 </div>
-              )}
+              </div>
               {inputsBlock}
             </div>
           </div>
@@ -490,12 +492,27 @@ export default function App() {
                 <h1 className="text-lg font-bold text-slate-800 tracking-tight">Find the Center</h1>
                 <p className="text-xs text-slate-400 mt-0.5">Find a fair meeting spot between multiple locations</p>
               </div>
+              <div className="flex items-center gap-2">
+                {selectedPlace && (
+                  <button onClick={handleSharePlace} className="text-xs text-indigo-500 hover:text-indigo-700 transition font-medium">
+                    {copied ? 'Copied!' : 'Share ↗'}
+                  </button>
+                )}
+                {anyFilled && (
+                  <button onClick={handleReset} aria-label="Reset all points and filters"
+                    className="text-xs text-slate-400 hover:text-rose-500 transition font-medium">
+                    Reset
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Compact Reset/Share row — kept visible when the header is hidden */}
-          {(anyFilled || selectedPlace) && (
-            <div className="px-5 py-2 border-b border-slate-100 flex-shrink-0 flex items-center justify-end gap-3">
+          {/* Compact brand + Reset/Share row — only when the header is hidden (short viewport) */}
+          <div className="hidden [@media(max-height:600px)]:flex px-5 py-2 border-b border-slate-100 flex-shrink-0 items-center gap-1.5">
+            <span className="text-green-500 text-sm leading-none">★</span>
+            <span className="text-xs font-bold text-slate-700 tracking-tight">Find the Center</span>
+            <div className="ml-auto flex items-center gap-3">
               {selectedPlace && (
                 <button onClick={handleSharePlace} className="text-xs text-indigo-500 hover:text-indigo-700 transition font-medium">
                   {copied ? 'Copied!' : 'Share ↗'}
@@ -508,7 +525,7 @@ export default function App() {
                 </button>
               )}
             </div>
-          )}
+          </div>
 
           {/* Inputs */}
           <div className="px-5 py-4 flex flex-col gap-4 bg-slate-50 flex-shrink-0 relative z-10 shadow-[0_4px_10px_rgba(0,0,0,0.08)]">
