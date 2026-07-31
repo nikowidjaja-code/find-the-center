@@ -81,6 +81,23 @@ const TRAVEL_MODES = [
   },
 ];
 
+// "Convergence" logo mark: three point-colored dots triangulating to the green center
+function LogoMark({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" className="flex-shrink-0">
+      <g stroke="#94a3b8" strokeWidth="3" strokeLinecap="round">
+        <line x1="15" y1="17" x2="31" y2="31" />
+        <line x1="50" y1="13" x2="33" y2="30" />
+        <line x1="41" y1="52" x2="33" y2="33" />
+      </g>
+      <circle cx="14" cy="16" r="7" fill="#4f46e5" />
+      <circle cx="51" cy="12" r="7" fill="#db2777" />
+      <circle cx="42" cy="53" r="7" fill="#0d9488" />
+      <circle cx="32" cy="31" r="8.5" fill="#16a34a" />
+    </svg>
+  );
+}
+
 function ChevronIcon({ open }) {
   return (
     <svg
@@ -490,6 +507,7 @@ export default function App() {
                 onClick={() => setTopOpen((v) => !v)}
                 className="flex items-center gap-2 text-left"
               >
+                <LogoMark size={20} />
                 <span className="text-sm font-bold text-slate-800">Find the Center</span>
                 <ChevronIcon open={topOpen} />
               </button>
@@ -583,7 +601,10 @@ export default function App() {
           <div className="px-5 pt-5 pb-4 short:pt-2.5 short:pb-2 border-b border-slate-100 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-lg short:text-sm font-bold text-slate-800 tracking-tight">Find the Center</h1>
+                <h1 className="flex items-center gap-2 text-lg short:text-sm font-bold text-slate-800 tracking-tight">
+                  <LogoMark size={24} />
+                  Find the Center
+                </h1>
                 <p className="text-xs text-slate-400 mt-0.5 short:hidden">Find a fair meeting spot between multiple locations</p>
               </div>
               <div className="flex items-center gap-2">
