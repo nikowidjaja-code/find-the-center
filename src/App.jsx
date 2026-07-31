@@ -460,7 +460,7 @@ export default function App() {
           <div className="flex-shrink-0 pointer-events-auto relative z-30">
 
             {/* Header bar — always visible */}
-            <div className="bg-white shadow-sm px-4 py-3 flex items-center justify-between">
+            <div className="bg-white border-b border-slate-200 shadow-[0_4px_12px_rgba(0,0,0,0.10)] px-4 py-3 flex items-center justify-between">
               <button
                 onClick={() => setTopOpen((v) => !v)}
                 className="flex items-center gap-2 text-left"
@@ -484,7 +484,7 @@ export default function App() {
 
             {/* Collapsible inputs */}
             {topOpen && (
-              <div className="bg-slate-50 px-4 pt-1 pb-4 flex flex-col gap-3 border-t border-slate-200">
+              <div className="bg-slate-50 px-4 pt-2 pb-4 flex flex-col gap-3">
                 {inputsBlock}
               </div>
             )}
