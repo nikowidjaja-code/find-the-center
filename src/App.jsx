@@ -336,7 +336,7 @@ export default function App() {
   const filterSection = hasCenter && (
     <>
       {/* Radius */}
-      <div className="px-5 py-3 border-b border-slate-100">
+      <div className="px-5 py-3 short:py-1.5 border-b border-slate-100">
         <div className="flex items-center justify-between mb-1.5">
           <label htmlFor="radius-slider" className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Search radius</label>
           <span className="text-xs font-bold text-indigo-600">{radius >= 1000 ? `${(radius / 1000).toFixed(1)} km` : `${radius} m`}</span>
@@ -348,13 +348,13 @@ export default function App() {
           aria-label="Search radius in meters"
           className="w-full h-1.5 rounded-full accent-indigo-600 cursor-pointer"
         />
-        <div className="flex justify-between text-xs text-slate-300 mt-1">
+        <div className="flex justify-between text-xs text-slate-300 mt-1 short:hidden">
           <span>{MIN_SEARCH_RADIUS_M} m</span><span>{MAX_SEARCH_RADIUS_M / 1000} km</span>
         </div>
       </div>
 
       {/* Type chips */}
-      <div className="px-5 py-3 border-b border-slate-100">
+      <div className="px-5 py-3 short:py-1.5 border-b border-slate-100">
         <div className="flex flex-wrap gap-1.5">
           {PLACE_TYPES.map((type) => {
             const active = selectedType === type.value;
@@ -370,7 +370,7 @@ export default function App() {
       </div>
 
       {/* Rating + Sort — stacked to avoid overflow on narrow screens */}
-      <div className="px-5 py-3 border-b border-slate-100 flex flex-col gap-2">
+      <div className="px-5 py-3 short:py-1.5 border-b border-slate-100 flex flex-col gap-2 short:gap-1">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide mr-1">Rating</span>
           {RATING_FILTERS.map((f) => (
@@ -404,7 +404,7 @@ export default function App() {
   );
 
   const placesSection = (
-    <div className="px-5 py-4">
+    <div className="px-5 py-4 short:py-2">
       {hasCenter && (
         <h2 className="text-sm font-semibold text-slate-700 mb-1">
           Nearby Places
@@ -419,8 +419,8 @@ export default function App() {
       />
       {/* Empty states */}
       {!anyFilled && (
-        <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center">
+        <div className="flex flex-col items-center justify-center py-10 short:py-3 text-center gap-3">
+          <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center short:hidden">
             <svg className="w-7 h-7 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
@@ -566,14 +566,14 @@ export default function App() {
         {/* ════════════════════════════════════════
             DESKTOP UI  (hidden on mobile)
         ════════════════════════════════════════ */}
-        <aside data-scroll-preserve className="hidden sm:flex flex-col absolute top-0 left-0 bottom-0 z-10 w-80 md:w-96 bg-white shadow-xl overflow-y-auto overflow-x-hidden">
+        <aside data-scroll-preserve className="hidden sm:flex flex-col absolute top-0 left-0 bottom-0 z-10 w-80 md:w-96 short:w-72 bg-white shadow-xl overflow-y-auto overflow-x-hidden">
 
           {/* Header */}
-          <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex-shrink-0">
+          <div className="px-5 pt-5 pb-4 short:pt-2.5 short:pb-2 border-b border-slate-100 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-lg font-bold text-slate-800 tracking-tight">Find the Center</h1>
-                <p className="text-xs text-slate-400 mt-0.5">Find a fair meeting spot between multiple locations</p>
+                <h1 className="text-lg short:text-sm font-bold text-slate-800 tracking-tight">Find the Center</h1>
+                <p className="text-xs text-slate-400 mt-0.5 short:hidden">Find a fair meeting spot between multiple locations</p>
               </div>
               <div className="flex items-center gap-2">
                 {hasCenter && (
@@ -592,7 +592,7 @@ export default function App() {
           </div>
 
           {/* Inputs */}
-          <div className="px-5 py-4 flex flex-col gap-4 bg-slate-50 flex-shrink-0 relative z-10 shadow-[0_4px_10px_rgba(0,0,0,0.08)]">
+          <div className="px-5 py-4 short:py-2 flex flex-col gap-4 short:gap-2 bg-slate-50 flex-shrink-0 relative z-10 shadow-[0_4px_10px_rgba(0,0,0,0.08)]">
             {inputsBlock}
           </div>
 

@@ -77,10 +77,12 @@ function FitBounds({ points, center }) {
     const bounds = new window.google.maps.LatLngBounds();
     coords.forEach((c) => bounds.extend(c));
     const desktop = window.matchMedia('(min-width: 640px)').matches;
+    const short = window.matchMedia('(max-height: 500px)').matches;
     map.fitBounds(
       bounds,
       desktop
-        ? { top: 60, bottom: 60, left: 440, right: 60 } // sidebar is 320–384px wide
+        // sidebar is 288px wide on short viewports, 320–384px otherwise
+        ? { top: 40, bottom: 40, left: short ? 330 : 440, right: 60 }
         : { top: 200, bottom: 80, left: 40, right: 40 } // below the mobile input panel
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
