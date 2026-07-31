@@ -280,6 +280,16 @@ export default function App() {
     setPoints((prev) => (prev.length <= MIN_POINTS ? prev : prev.filter((_, i) => i !== index)));
   }, []);
 
+  // Tapping a pin on the map removes that point; at the 2-slot minimum the
+  // slot is cleared instead of removed.
+  const handlePointClick = useCallback((index) => {
+    setPoints((prev) =>
+      prev.length > MIN_POINTS
+        ? prev.filter((_, i) => i !== index)
+        : prev.map((p, i) => (i === index ? emptyPoint() : p))
+    );
+  }, []);
+
   // Copies the app URL, which encodes all points — recipients see the same setup
   const handleShare = useCallback(() => {
     navigator.clipboard.writeText(window.location.href)
@@ -461,6 +471,7 @@ export default function App() {
             points={points.map((p) => p.coord)} center={center} radius={radius}
             selectedPlace={selectedPlace}
             onMapClick={handleMapClick} onPointDrag={setPointAt}
+            onPointClick={handlePointClick}
           />
         </div>
 

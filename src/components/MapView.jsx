@@ -5,11 +5,13 @@ import { POINT_STYLES } from '../constants.js';
 // Renders a custom teardrop SVG pin using the legacy Marker API (no Map ID
 // required). White halo ring + drop shadow make it read clearly as a placed
 // marker and stand apart from Google's built-in red pins / blue location dot.
-function PinMarker({ position, color, label, scale = 1, zIndex = 0, draggable = false, onDragEnd }) {
+function PinMarker({ position, color, label, scale = 1, zIndex = 0, draggable = false, onDragEnd, onClick, title }) {
   const map = useMap();
   const markerRef = useRef(null);
   const onDragEndRef = useRef(onDragEnd);
   onDragEndRef.current = onDragEnd;
+  const onClickRef = useRef(onClick);
+  onClickRef.current = onClick;
 
   useEffect(() => {
     if (!map || !position) return;
@@ -47,6 +49,10 @@ function PinMarker({ position, color, label, scale = 1, zIndex = 0, draggable = 
           onDragEndRef.current?.({ lat: e.latLng.lat(), lng: e.latLng.lng() })
         );
       }
+      if (onClickRef.current) {
+        markerRef.current.addListener('click', () => onClickRef.current?.());
+      }
+      if (title) markerRef.current.setTitle(title);
     }
 
     return () => {
@@ -164,7 +170,7 @@ function CenterCircle({ center, radius = 500 }) {
 
 export default function MapView({
   points = [], center, radius = 500, selectedPlace = null,
-  onMapClick, onPointDrag,
+  onMapClick, onPointDrag, onPointClick,
 }) {
   const defaultCenter = { lat: 2, lng: 110 };
   const filled = points.filter(Boolean);
@@ -203,6 +209,8 @@ export default function MapView({
             zIndex={10}
             draggable={!!onPointDrag}
             onDragEnd={(ll) => onPointDrag(i, ll)}
+            onClick={onPointClick ? () => onPointClick(i) : undefined}
+            title={`Point ${POINT_STYLES[i].label} — tap to remove, drag to move`}
           />
         ) : null
       )}
