@@ -71,7 +71,10 @@ export default function SelectedPlaceCard({ place, onDismiss }) {
             </div>
           ))}
           {fairness !== null && (
-            <div className={`flex items-center gap-1 text-xs font-medium ${fairnessColor}`}>
+            <div
+              className={`flex items-center gap-1 text-xs font-medium ${fairnessColor}`}
+              title="Fairness: 100% = identical travel time from every point"
+            >
               <span>⚖</span>
               <span>{fairness}% balanced</span>
             </div>

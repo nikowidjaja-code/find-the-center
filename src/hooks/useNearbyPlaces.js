@@ -20,8 +20,8 @@ const PLACES_FIELD_MASK = [
 /**
  * Fetches nearby places around a center point and enriches them with Distance
  * Matrix data (travel time from every input point). Always fetches at the max
- * radius (2000m) so the caller can filter client-side without new API calls on
- * every radius slider change.
+ * radius (MAX_SEARCH_RADIUS_M) so the caller can filter client-side without
+ * new API calls on every radius slider change.
  *
  * @param {{ lat: number, lng: number } | null} center
  * @param {Array<{ lat: number, lng: number }>} points - all input points (>=2)

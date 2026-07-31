@@ -52,10 +52,10 @@ const RATING_FILTERS = [
 ];
 
 const SORT_OPTIONS = [
-  { label: 'Best',    value: 'balanced'   },
-  { label: 'Fairest', value: 'fairness'   },
-  { label: 'Rating',  value: 'rating'     },
-  { label: 'Popular', value: 'popularity' },
+  { label: 'Best',    value: 'balanced',   title: 'Balance of rating, popularity and fair travel times' },
+  { label: 'Fairest', value: 'fairness',   title: 'Most equal travel times from every point' },
+  { label: 'Rating',  value: 'rating',     title: 'Highest rated first' },
+  { label: 'Popular', value: 'popularity', title: 'Most reviewed first' },
 ];
 
 const TRAVEL_MODES = [
@@ -341,7 +341,9 @@ export default function App() {
           aria-label="Search radius in meters"
           className="w-full h-1.5 rounded-full accent-indigo-600 cursor-pointer"
         />
-        <div className="flex justify-between text-xs text-slate-300 mt-1"><span>100 m</span><span>2 km</span></div>
+        <div className="flex justify-between text-xs text-slate-300 mt-1">
+          <span>{MIN_SEARCH_RADIUS_M} m</span><span>{MAX_SEARCH_RADIUS_M / 1000} km</span>
+        </div>
       </div>
 
       {/* Type chips */}
@@ -376,7 +378,7 @@ export default function App() {
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Sort</span>
           <div className="flex items-center gap-1 bg-slate-100 rounded-full p-0.5">
             {SORT_OPTIONS.map((s) => (
-              <button key={s.value} onClick={() => setSortBy(s.value)}
+              <button key={s.value} onClick={() => setSortBy(s.value)} title={s.title}
                 className={`px-2 py-0.5 rounded-full text-xs font-medium transition
                   ${sortBy === s.value ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                 {s.label}
@@ -421,7 +423,17 @@ export default function App() {
         <p className="text-xs text-slate-400 text-center py-6">Add at least one more location to find the center</p>
       )}
       {hasCenter && !placesLoading && nearbyPlaces.length === 0 && !placesError && (
-        <p className="text-xs text-slate-400 text-center py-6">No places found nearby — try expanding the search radius</p>
+        <div className="flex flex-col items-center gap-2 py-6 text-center">
+          <p className="text-xs text-slate-400">No places found nearby</p>
+          {radius < MAX_SEARCH_RADIUS_M && (
+            <button
+              onClick={() => setRadius(Math.min(radius * 2, MAX_SEARCH_RADIUS_M))}
+              className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition"
+            >
+              Widen search radius
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

@@ -25,7 +25,10 @@ function TravelRow({ from = [] }) {
         ) : null
       )}
       {fairness !== null && (
-        <span className={`text-xs font-medium ${fairColor}`}>⚖ {fairness}%</span>
+        <span
+          className={`text-xs font-medium ${fairColor}`}
+          title="Fairness: 100% = identical travel time from every point"
+        >⚖ {fairness}%</span>
       )}
     </div>
   );
@@ -85,7 +88,13 @@ export default function PlaceCard({ place, isSelected, onSelect }) {
   return (
     <div
       onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(); }
+      }}
       className={`rounded-xl p-3 shadow-sm transition flex flex-col gap-1.5 cursor-pointer
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400
         ${isSelected
           ? 'bg-indigo-50 border-2 border-indigo-400 shadow-indigo-100'
           : 'bg-white border border-slate-100 hover:shadow-md hover:border-indigo-100'

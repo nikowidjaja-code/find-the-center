@@ -73,7 +73,7 @@ export default function LocationInput({ label, value, onPlace, dotColor = 'bg-in
           <button
             onClick={onRemove}
             aria-label={`Remove ${label}`}
-            className="ml-auto text-slate-300 hover:text-rose-500 transition p-0.5"
+            className="ml-auto text-slate-300 hover:text-rose-500 transition p-1.5 -my-1.5 -mr-1"
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M6 18L18 6M6 6l12 12" />
@@ -89,6 +89,7 @@ export default function LocationInput({ label, value, onPlace, dotColor = 'bg-in
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
+          onBlur={() => setInputValue(value || '')}
           placeholder={`Search for ${label}...`}
           className="flex-1 px-3 py-2 text-sm rounded-lg border bg-white text-slate-800 placeholder-slate-400 outline-none transition border-slate-200 hover:border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
         />
