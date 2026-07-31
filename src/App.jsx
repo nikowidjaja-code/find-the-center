@@ -577,7 +577,7 @@ export default function App() {
               </div>
               <div className="flex items-center gap-2">
                 {hasCenter && (
-                  <button onClick={handleShare} title="Copy a link to this setup" className="text-xs text-indigo-500 hover:text-indigo-700 transition font-medium">
+                  <button onClick={handleShare} title="Copy a link to this setup" className="text-xs text-indigo-500 hover:text-indigo-700 transition font-medium whitespace-nowrap">
                     {copied ? 'Copied!' : 'Share link'}
                   </button>
                 )}
