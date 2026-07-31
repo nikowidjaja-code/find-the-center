@@ -540,7 +540,8 @@ export default function App() {
                     <span className="text-sm text-slate-400">Enter two locations above</span>
                   )}
                 </div>
-                <span className="text-slate-400 flex-shrink-0"><ChevronIcon open={bottomOpen} /></span>
+                {/* Sheet opens upward: point up when closed, down when open */}
+                <span className="text-slate-400 flex-shrink-0"><ChevronIcon open={!bottomOpen} /></span>
               </div>
             </button>
 
