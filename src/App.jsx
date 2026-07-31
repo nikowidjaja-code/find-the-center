@@ -526,7 +526,7 @@ export default function App() {
                 <div className="flex items-center gap-2 min-w-0">
                   {hasCenter ? (
                     <>
-                      <span className="text-green-500 text-base flex-shrink-0">★</span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500 ring-2 ring-green-100 flex-shrink-0" />
                       <span className="text-sm font-semibold text-slate-700 truncate">
                         {nearbyPlaces.length > 0
                           ? `${nearbyPlaces.length} place${nearbyPlaces.length !== 1 ? 's' : ''} nearby`
@@ -551,7 +551,7 @@ export default function App() {
                 {placesSection}
                 {hasCenter && (
                   <div className="px-5 py-2.5 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
-                    <span className="text-green-400">★</span>
+                    <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
                     <span>{centerAddress || `${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`}</span>
                     <span className="ml-auto">{filledCoords.length} points</span>
                   </div>
@@ -611,7 +611,7 @@ export default function App() {
           {/* Compact center info — bottom, low-priority */}
           {hasCenter && (
             <div className="px-5 py-2.5 border-t border-slate-100 flex-shrink-0 flex items-center gap-2 text-xs text-slate-400">
-              <span className="text-green-400">★</span>
+              <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
               <span className="truncate">{centerAddress || `${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`}</span>
               <span className="ml-auto flex-shrink-0">{filledCoords.length} points</span>
             </div>

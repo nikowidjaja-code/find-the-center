@@ -88,6 +88,37 @@ function FitBounds({ points, center }) {
   return null;
 }
 
+// The computed center is a reference point, not a destination — a small dot
+// with a white ring, not a teardrop pin like the inputs and places.
+function CenterDot({ position }) {
+  const map = useMap();
+  const markerRef = useRef(null);
+
+  useEffect(() => {
+    if (!map || !position) return;
+    markerRef.current = new window.google.maps.Marker({
+      map,
+      position,
+      zIndex: 20,
+      clickable: false,
+      icon: {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        scale: 7,
+        fillColor: '#16a34a',
+        fillOpacity: 1,
+        strokeColor: '#ffffff',
+        strokeWeight: 2.5,
+      },
+    });
+    return () => {
+      markerRef.current?.setMap(null);
+      markerRef.current = null;
+    };
+  }, [map, position?.lat, position?.lng]);
+
+  return null;
+}
+
 function MapController({ selectedPlace }) {
   const map = useMap();
   useEffect(() => {
@@ -174,9 +205,7 @@ export default function MapView({
         ) : null
       )}
 
-      {center && (
-        <PinMarker position={center} color="#16a34a" label="★" scale={1.35} zIndex={20} />
-      )}
+      {center && <CenterDot position={center} />}
 
       {selectedPlace?.location && (
         <PinMarker
