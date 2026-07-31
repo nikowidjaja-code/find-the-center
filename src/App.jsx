@@ -460,7 +460,7 @@ export default function App() {
           <div className="flex-shrink-0 pointer-events-auto relative z-30">
 
             {/* Header bar — always visible */}
-            <div className="bg-white border-b border-slate-200 shadow-[0_4px_12px_rgba(0,0,0,0.10)] px-4 py-3 flex items-center justify-between">
+            <div className="bg-white border-b-2 border-slate-300 shadow-[0_6px_16px_rgba(0,0,0,0.25)] px-4 py-3 flex items-center justify-between">
               <button
                 onClick={() => setTopOpen((v) => !v)}
                 className="flex items-center gap-2 text-left"
