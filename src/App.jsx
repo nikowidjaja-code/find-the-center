@@ -8,6 +8,7 @@ import { useDebounce } from './hooks/useDebounce.js';
 import { useNearbyPlaces } from './hooks/useNearbyPlaces.js';
 import { pickReadableName } from './hooks/useGeolocation.js';
 import { calcFairness, calcScore } from './utils/fairness.js';
+import { haversineDistance, geometricMedian } from './utils/geo.js';
 import {
   DEFAULT_SEARCH_RADIUS_M,
   MIN_SEARCH_RADIUS_M,
@@ -17,17 +18,6 @@ import {
   MAX_POINTS,
   POINT_STYLES,
 } from './constants.js';
-
-function haversineDistance(lat1, lng1, lat2, lng2) {
-  const R = 6371000;
-  const toRad = (d) => (d * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
@@ -112,6 +102,7 @@ export default function App() {
   // --- Nearby places ---
   const [selectedType, setSelectedType] = useState(null);
   const [minRating, setMinRating] = useState(0);
+  const [openNow, setOpenNow] = useState(false);
   const [sortBy, setSortBy] = useState('balanced');
   const [radius, setRadius] = useState(DEFAULT_SEARCH_RADIUS_M);
   const [selectedPlace, setSelectedPlace] = useState(null);
@@ -129,17 +120,16 @@ export default function App() {
   const apiLoaded = useApiIsLoaded();
   const geocoderRef = useRef(null);
 
-  // Filled coordinates, and the geometric center (centroid) of all points
+  // Filled coordinates, and the meeting center (geometric median) of all points
   const filledCoords = useMemo(
     () => points.map((p) => p.coord).filter(Boolean),
     [points]
   );
   const center = useMemo(() => {
     if (filledCoords.length < MIN_POINTS) return null;
-    return {
-      lat: filledCoords.reduce((s, c) => s + c.lat, 0) / filledCoords.length,
-      lng: filledCoords.reduce((s, c) => s + c.lng, 0) / filledCoords.length,
-    };
+    // Geometric median, not centroid — a cluster of nearby points doesn't
+    // drag the center toward itself.
+    return geometricMedian(filledCoords);
   }, [filledCoords]);
 
   const hasCenter = !!center;
@@ -189,7 +179,22 @@ export default function App() {
       const next = [];
       for (let i = 0; i < Math.max(MIN_POINTS, loaded.length); i++) next.push(loaded[i] || emptyPoint());
       setPoints(next.slice(0, MAX_POINTS));
+      return;
     }
+    // No shared link — restore the last session's points, if any
+    try {
+      const saved = JSON.parse(localStorage.getItem('ftc:points') || 'null');
+      if (Array.isArray(saved) && saved.some((p) => p?.coord)) {
+        const next = saved.slice(0, MAX_POINTS).map((p) => ({
+          name: p?.name || '',
+          coord: Number.isFinite(p?.coord?.lat) && Number.isFinite(p?.coord?.lng)
+            ? { lat: p.coord.lat, lng: p.coord.lng }
+            : null,
+        }));
+        while (next.length < MIN_POINTS) next.push(emptyPoint());
+        setPoints(next);
+      }
+    } catch { /* corrupted storage — start fresh */ }
   }, []);
 
   // Keep the URL in sync with the points, so the address bar / Share button
@@ -203,6 +208,7 @@ export default function App() {
     });
     const qs = params.toString();
     window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+    try { localStorage.setItem('ftc:points', JSON.stringify(points)); } catch { /* quota/private mode */ }
   }, [points]);
 
   const { places: allPlaces, loading: placesLoading, error: placesError } = useNearbyPlaces(
@@ -216,7 +222,8 @@ export default function App() {
         center.lat, center.lng, p.location.latitude, p.location.longitude
       ) <= debouncedRadius;
       const meetsRating = minRating === 0 || (typeof p.rating === 'number' && p.rating >= minRating);
-      return withinRadius && meetsRating;
+      const meetsOpen = !openNow || p.currentOpeningHours?.openNow === true;
+      return withinRadius && meetsRating && meetsOpen;
     });
     if (sortBy === 'balanced') {
       results = [...results].sort((a, b) => calcScore(b) - calcScore(a));
@@ -226,7 +233,7 @@ export default function App() {
       results = [...results].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
     }
     return results;
-  }, [allPlaces, center, debouncedRadius, minRating, sortBy]);
+  }, [allPlaces, center, debouncedRadius, minRating, openNow, sortBy]);
 
   const handlePlace = useCallback((index) => ({ lat, lng }, name) => {
     setPoints((prev) => prev.map((p, i) => (i === index ? { coord: { lat, lng }, name } : p)));
@@ -281,7 +288,7 @@ export default function App() {
 
   const handleReset = () => {
     setPoints([emptyPoint(), emptyPoint()]);
-    setTravelMode('DRIVING'); setSelectedType(null); setMinRating(0);
+    setTravelMode('DRIVING'); setSelectedType(null); setMinRating(0); setOpenNow(false);
     setSortBy('balanced'); setRadius(DEFAULT_SEARCH_RADIUS_M);
     setSelectedPlace(null); setBottomOpen(false); setTopOpen(true);
   };
@@ -373,6 +380,12 @@ export default function App() {
               {f.label}
             </button>
           ))}
+          <button onClick={() => setOpenNow((v) => !v)}
+            title="Only show places that are open right now"
+            className={`px-2 py-0.5 rounded-full text-xs font-medium transition
+              ${openNow ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+            Open now
+          </button>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Sort</span>

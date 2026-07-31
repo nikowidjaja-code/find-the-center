@@ -15,6 +15,7 @@ const PLACES_FIELD_MASK = [
   'places.location',
   'places.googleMapsUri',
   'places.id',
+  'places.currentOpeningHours.openNow',
 ].join(',');
 
 /**
@@ -105,6 +106,10 @@ export function useNearbyPlaces(center, points, selectedType, travelMode = 'DRIV
                 (p) => new window.google.maps.LatLng(p.location.latitude, p.location.longitude)
               ),
               travelMode: window.google.maps.TravelMode[travelMode],
+              // Traffic-aware drive times (duration_in_traffic on each element)
+              ...(travelMode === 'DRIVING' && {
+                drivingOptions: { departureTime: new Date() },
+              }),
             },
             (result, status) => {
               if (cancelled) { reject(new Error('cancelled')); return; }
@@ -116,12 +121,14 @@ export function useNearbyPlaces(center, points, selectedType, travelMode = 'DRIV
 
         if (cancelled) return;
 
-        // from[i] = travel from points[i] to this place (null if not OK)
+        // from[i] = travel from points[i] to this place (null if not OK).
+        // Prefer traffic-aware duration when the matrix returns one.
         const enriched = rawPlaces.map((p, destIdx) => ({
           ...p,
           from: points.map((_, ptIdx) => {
             const el = matrixData.rows?.[ptIdx]?.elements?.[destIdx];
-            return el?.status === 'OK' ? el : null;
+            if (el?.status !== 'OK') return null;
+            return el.duration_in_traffic ? { ...el, duration: el.duration_in_traffic } : el;
           }),
         }));
 
