@@ -1,5 +1,37 @@
+import { useId } from 'react';
 import { calcFairness } from '../utils/fairness.js';
 import { POINT_STYLES } from '../constants.js';
+
+const STAR_PATH = 'M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.174c.969 0 1.371 1.24.588 1.81l-3.378 2.454a1 1 0 00-.364 1.118l1.286 3.967c.3.921-.755 1.688-1.54 1.118L10 15.347l-3.953 2.874c-.784.57-1.838-.197-1.539-1.118l1.286-3.967a1 1 0 00-.364-1.118L2.052 9.394c-.783-.57-.38-1.81.588-1.81h4.174a1 1 0 00.95-.69L9.05 2.927z';
+
+// 5-star row with half-star support. Shared by list cards and the detail card.
+export function Stars({ rating }) {
+  const gid = useId(); // unique per instance — gradient ids must not collide
+  const full = Math.floor(rating);
+  const half = rating - full >= 0.5;
+  const empty = 5 - full - (half ? 1 : 0);
+  return (
+    <span className="inline-flex items-center gap-0.5 text-amber-400" role="img" aria-label={`${rating.toFixed(1)} out of 5 stars`}>
+      {Array(full).fill(0).map((_, i) => (
+        <svg key={`f${i}`} className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path d={STAR_PATH} /></svg>
+      ))}
+      {half && (
+        <svg key="h" className="w-3.5 h-3.5" viewBox="0 0 20 20">
+          <defs>
+            <linearGradient id={gid}>
+              <stop offset="50%" stopColor="#f59e0b" />
+              <stop offset="50%" stopColor="#d1d5db" />
+            </linearGradient>
+          </defs>
+          <path fill={`url(#${gid})`} d={STAR_PATH} />
+        </svg>
+      )}
+      {Array(empty).fill(0).map((_, i) => (
+        <svg key={`e${i}`} className="w-3.5 h-3.5 text-slate-300 fill-current" viewBox="0 0 20 20"><path d={STAR_PATH} /></svg>
+      ))}
+    </span>
+  );
+}
 
 /**
  * PlaceCard — displays a single nearby place result.
@@ -54,37 +86,6 @@ export default function PlaceCard({ place, isSelected, onSelect }) {
     .filter((t) => !skipTypes.has(t))
     .slice(0, 3);
 
-  const renderStars = (r) => {
-    const full = Math.floor(r);
-    const half = r - full >= 0.5;
-    const empty = 5 - full - (half ? 1 : 0);
-    return (
-      <span className="inline-flex items-center gap-0.5 text-amber-400" role="img" aria-label={`${r.toFixed(1)} out of 5 stars`}>
-        {Array(full).fill(0).map((_, i) => (
-          <svg key={`f${i}`} className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.174c.969 0 1.371 1.24.588 1.81l-3.378 2.454a1 1 0 00-.364 1.118l1.286 3.967c.3.921-.755 1.688-1.54 1.118L10 15.347l-3.953 2.874c-.784.57-1.838-.197-1.539-1.118l1.286-3.967a1 1 0 00-.364-1.118L2.052 9.394c-.783-.57-.38-1.81.588-1.81h4.174a1 1 0 00.95-.69L9.05 2.927z" />
-          </svg>
-        ))}
-        {half && (
-          <svg key="h" className="w-3.5 h-3.5" viewBox="0 0 20 20">
-            <defs>
-              <linearGradient id="half">
-                <stop offset="50%" stopColor="#f59e0b" />
-                <stop offset="50%" stopColor="#d1d5db" />
-              </linearGradient>
-            </defs>
-            <path fill="url(#half)" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.174c.969 0 1.371 1.24.588 1.81l-3.378 2.454a1 1 0 00-.364 1.118l1.286 3.967c.3.921-.755 1.688-1.54 1.118L10 15.347l-3.953 2.874c-.784.57-1.838-.197-1.539-1.118l1.286-3.967a1 1 0 00-.364-1.118L2.052 9.394c-.783-.57-.38-1.81.588-1.81h4.174a1 1 0 00.95-.69L9.05 2.927z" />
-          </svg>
-        )}
-        {Array(empty).fill(0).map((_, i) => (
-          <svg key={`e${i}`} className="w-3.5 h-3.5 text-slate-300 fill-current" viewBox="0 0 20 20">
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.174c.969 0 1.371 1.24.588 1.81l-3.378 2.454a1 1 0 00-.364 1.118l1.286 3.967c.3.921-.755 1.688-1.54 1.118L10 15.347l-3.953 2.874c-.784.57-1.838-.197-1.539-1.118l1.286-3.967a1 1 0 00-.364-1.118L2.052 9.394c-.783-.57-.38-1.81.588-1.81h4.174a1 1 0 00.95-.69L9.05 2.927z" />
-          </svg>
-        ))}
-      </span>
-    );
-  };
-
   return (
     <div
       onClick={onSelect}
@@ -120,7 +121,7 @@ export default function PlaceCard({ place, isSelected, onSelect }) {
 
       {typeof rating === 'number' && (
         <div className="flex items-center gap-1.5">
-          {renderStars(rating)}
+          <Stars rating={rating} />
           <span className="text-xs text-slate-600 font-medium">{rating.toFixed(1)}</span>
           {typeof ratingCount === 'number' && (
             <span className="text-xs text-slate-400">({ratingCount.toLocaleString()})</span>

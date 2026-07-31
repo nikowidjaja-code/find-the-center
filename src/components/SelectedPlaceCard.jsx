@@ -1,5 +1,6 @@
 import { calcFairness } from '../utils/fairness.js';
 import { POINT_STYLES } from '../constants.js';
+import { Stars } from './PlaceCard.jsx';
 
 export default function SelectedPlaceCard({ place, onDismiss }) {
   const name = place.displayName?.text || 'Unknown place';
@@ -21,10 +22,6 @@ export default function SelectedPlaceCard({ place, onDismiss }) {
     fairness === null ? '' :
     fairness >= 80 ? 'text-green-600' :
     fairness >= 60 ? 'text-amber-500' : 'text-rose-500';
-
-  const stars = typeof rating === 'number'
-    ? Math.round(rating * 2) / 2
-    : null;
 
   return (
     <div className="px-4 pt-3 pb-4 bg-white border-t border-slate-100 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
@@ -49,9 +46,7 @@ export default function SelectedPlaceCard({ place, onDismiss }) {
       {/* Rating */}
       {typeof rating === 'number' && (
         <div className="flex items-center gap-1.5 mb-2">
-          <span className="text-amber-400 text-sm leading-none">
-            {'★'.repeat(Math.round(stars))}{'☆'.repeat(5 - Math.round(stars))}
-          </span>
+          <Stars rating={rating} />
           <span className="text-xs font-semibold text-slate-700">{rating.toFixed(1)}</span>
           {typeof ratingCount === 'number' && (
             <span className="text-xs text-slate-400">({ratingCount.toLocaleString()} reviews)</span>

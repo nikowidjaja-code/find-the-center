@@ -369,7 +369,7 @@ export default function App() {
           {RATING_FILTERS.map((f) => (
             <button key={f.label} onClick={() => setMinRating(f.value)}
               className={`px-2 py-0.5 rounded-full text-xs font-medium transition
-                ${minRating === f.value ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                ${minRating === f.value ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
               {f.label}
             </button>
           ))}
@@ -490,20 +490,23 @@ export default function App() {
             )}
           </div>
 
-          {/* ── Selected place card — shown above the places panel ── */}
+          {/* Transparent flex-1 gap — shows the map below */}
+          <div className="flex-1" />
+
+          {/* ── Selected place card — sits just above the bottom sheet ── */}
           {selectedPlace && (
             <div className="flex-shrink-0 pointer-events-auto relative z-20">
               <SelectedPlaceCard place={selectedPlace} onDismiss={() => setSelectedPlace(null)} />
             </div>
           )}
 
-          {/* ── Places panel — anchored directly below inputs ── */}
+          {/* ── Places panel — bottom sheet, grows upward when opened ── */}
           <div className="flex-shrink-0 pointer-events-auto relative z-20">
 
             {/* Handle bar — toggles the list */}
             <button
               onClick={() => setBottomOpen((v) => !v)}
-              className="w-full bg-white border-t border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.08)] px-5 py-3 flex items-center justify-between"
+              className="w-full bg-white border-t border-slate-100 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] px-5 py-3 flex items-center justify-between"
             >
               <div className="flex items-center gap-2 min-w-0">
                 {hasCenter ? (
@@ -543,9 +546,6 @@ export default function App() {
               </div>
             </div>
           </div>
-
-          {/* Transparent flex-1 gap — shows the map below */}
-          <div className="flex-1" />
 
         </div>{/* end mobile UI */}
 
