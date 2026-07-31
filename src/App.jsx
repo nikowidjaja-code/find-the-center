@@ -336,7 +336,7 @@ export default function App() {
   const filterSection = hasCenter && (
     <>
       {/* Radius */}
-      <div className="px-5 py-3 short:py-1.5 border-b border-slate-100">
+      <div className="px-5 py-3 short:py-1.5 border-b border-slate-100 short:border-b-2 short:border-slate-200">
         <div className="flex items-center justify-between mb-1.5">
           <label htmlFor="radius-slider" className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Search radius</label>
           <span className="text-xs font-bold text-indigo-600">{radius >= 1000 ? `${(radius / 1000).toFixed(1)} km` : `${radius} m`}</span>
@@ -354,7 +354,7 @@ export default function App() {
       </div>
 
       {/* Type chips */}
-      <div className="px-5 py-3 short:py-1.5 border-b border-slate-100">
+      <div className="px-5 py-3 short:py-1.5 border-b border-slate-100 short:border-b-2 short:border-slate-200">
         <div className="flex flex-wrap gap-1.5">
           {PLACE_TYPES.map((type) => {
             const active = selectedType === type.value;
@@ -370,7 +370,7 @@ export default function App() {
       </div>
 
       {/* Rating + Sort — stacked to avoid overflow on narrow screens */}
-      <div className="px-5 py-3 short:py-1.5 border-b border-slate-100 flex flex-col gap-2 short:gap-1">
+      <div className="px-5 py-3 short:py-1.5 border-b border-slate-100 short:border-b-2 short:border-slate-200 flex flex-col gap-2 short:gap-1">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide mr-1">Rating</span>
           {RATING_FILTERS.map((f) => (
@@ -569,7 +569,7 @@ export default function App() {
         <aside data-scroll-preserve className="hidden sm:flex flex-col absolute top-0 left-0 bottom-0 z-10 w-80 md:w-96 short:w-72 bg-white shadow-xl overflow-y-auto overflow-x-hidden">
 
           {/* Header */}
-          <div className="px-5 pt-5 pb-4 short:pt-2.5 short:pb-2 border-b border-slate-100 flex-shrink-0">
+          <div className="px-5 pt-5 pb-4 short:pt-2.5 short:pb-2 border-b border-slate-100 short:border-b-2 short:border-slate-200 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-lg short:text-sm font-bold text-slate-800 tracking-tight">Find the Center</h1>
@@ -598,7 +598,7 @@ export default function App() {
 
           {/* Selected place detail card */}
           {selectedPlace && (
-            <div className="flex-shrink-0 border-b border-slate-100">
+            <div className="flex-shrink-0 border-b border-slate-100 short:border-b-2 short:border-slate-200">
               <SelectedPlaceCard place={selectedPlace} onDismiss={() => setSelectedPlace(null)} />
             </div>
           )}
