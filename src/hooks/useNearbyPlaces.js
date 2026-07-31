@@ -15,26 +15,30 @@ const PLACES_FIELD_MASK = [
   'places.location',
   'places.googleMapsUri',
   'places.id',
+  'places.currentOpeningHours.openNow',
 ].join(',');
 
 /**
- * Fetches nearby places around a midpoint and enriches them with Distance Matrix data.
- * Always fetches at the maximum radius (2000m) so the caller can filter client-side
- * without triggering new API calls on every radius slider change.
+ * Fetches nearby places around a center point and enriches them with Distance
+ * Matrix data (travel time from every input point). Always fetches at the max
+ * radius (MAX_SEARCH_RADIUS_M) so the caller can filter client-side without
+ * new API calls on every radius slider change.
  *
- * @param {{ lat: number, lng: number } | null} midpoint
- * @param {{ lat: number, lng: number } | null} pointA
- * @param {{ lat: number, lng: number } | null} pointB
+ * @param {{ lat: number, lng: number } | null} center
+ * @param {Array<{ lat: number, lng: number }>} points - all input points (>=2)
  * @param {string | null} selectedType
  * @returns {{ places: object[], loading: boolean, error: string | null }}
  */
-export function useNearbyPlaces(midpoint, pointA, pointB, selectedType, travelMode = 'DRIVING') {
+export function useNearbyPlaces(center, points, selectedType, travelMode = 'DRIVING') {
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Stable key so the effect only refires when point coordinates actually change
+  const pointsKey = (points ?? []).map((p) => `${p.lat},${p.lng}`).join('|');
+
   useEffect(() => {
-    if (!midpoint || !pointA || !pointB) {
+    if (!center || !points || points.length < 2) {
       setPlaces([]);
       setError(null);
       return;
@@ -62,7 +66,7 @@ export function useNearbyPlaces(midpoint, pointA, pointB, selectedType, travelMo
             body: JSON.stringify({
               locationRestriction: {
                 circle: {
-                  center: { latitude: midpoint.lat, longitude: midpoint.lng },
+                  center: { latitude: center.lat, longitude: center.lng },
                   radius: MAX_FETCH_RADIUS,
                 },
               },
@@ -95,14 +99,17 @@ export function useNearbyPlaces(midpoint, pointA, pointB, selectedType, travelMo
           const svc = new window.google.maps.DistanceMatrixService();
           svc.getDistanceMatrix(
             {
-              origins: [
-                new window.google.maps.LatLng(pointA.lat, pointA.lng),
-                new window.google.maps.LatLng(pointB.lat, pointB.lng),
-              ],
+              origins: points.map(
+                (p) => new window.google.maps.LatLng(p.lat, p.lng)
+              ),
               destinations: rawPlaces.map(
                 (p) => new window.google.maps.LatLng(p.location.latitude, p.location.longitude)
               ),
               travelMode: window.google.maps.TravelMode[travelMode],
+              // Traffic-aware drive times (duration_in_traffic on each element)
+              ...(travelMode === 'DRIVING' && {
+                drivingOptions: { departureTime: new Date() },
+              }),
             },
             (result, status) => {
               if (cancelled) { reject(new Error('cancelled')); return; }
@@ -114,14 +121,15 @@ export function useNearbyPlaces(midpoint, pointA, pointB, selectedType, travelMo
 
         if (cancelled) return;
 
-        const enriched = rawPlaces.map((p, i) => ({
+        // from[i] = travel from points[i] to this place (null if not OK).
+        // Prefer traffic-aware duration when the matrix returns one.
+        const enriched = rawPlaces.map((p, destIdx) => ({
           ...p,
-          fromA: matrixData.rows?.[0]?.elements?.[i]?.status === 'OK'
-            ? matrixData.rows[0].elements[i]
-            : null,
-          fromB: matrixData.rows?.[1]?.elements?.[i]?.status === 'OK'
-            ? matrixData.rows[1].elements[i]
-            : null,
+          from: points.map((_, ptIdx) => {
+            const el = matrixData.rows?.[ptIdx]?.elements?.[destIdx];
+            if (el?.status !== 'OK') return null;
+            return el.duration_in_traffic ? { ...el, duration: el.duration_in_traffic } : el;
+          }),
         }));
 
         setPlaces(enriched);
@@ -142,7 +150,8 @@ export function useNearbyPlaces(midpoint, pointA, pointB, selectedType, travelMo
       cancelled = true;
       controller.abort();
     };
-  }, [midpoint?.lat, midpoint?.lng, selectedType, travelMode, pointA?.lat, pointA?.lng, pointB?.lat, pointB?.lng]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [center?.lat, center?.lng, selectedType, travelMode, pointsKey]);
 
   return { places, loading, error };
 }

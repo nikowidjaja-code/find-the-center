@@ -4,29 +4,24 @@ import LocationInput from './components/LocationInput.jsx';
 import MapView from './components/MapView.jsx';
 import PlacesList from './components/PlacesList.jsx';
 import SelectedPlaceCard from './components/SelectedPlaceCard.jsx';
-import { useDirections } from './hooks/useDirections.js';
 import { useDebounce } from './hooks/useDebounce.js';
 import { useNearbyPlaces } from './hooks/useNearbyPlaces.js';
+import { pickReadableName } from './hooks/useGeolocation.js';
 import { calcFairness, calcScore } from './utils/fairness.js';
+import { haversineDistance, geometricMedian } from './utils/geo.js';
 import {
   DEFAULT_SEARCH_RADIUS_M,
   MIN_SEARCH_RADIUS_M,
   MAX_SEARCH_RADIUS_M,
   RADIUS_DEBOUNCE_MS,
+  MIN_POINTS,
+  MAX_POINTS,
+  POINT_STYLES,
 } from './constants.js';
 
-function haversineDistance(lat1, lng1, lat2, lng2) {
-  const R = 6371000;
-  const toRad = (d) => (d * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+const emptyPoint = () => ({ name: '', coord: null });
 
 const PLACE_TYPES = [
   { label: 'All',        value: null,             emoji: '🗺️' },
@@ -47,10 +42,10 @@ const RATING_FILTERS = [
 ];
 
 const SORT_OPTIONS = [
-  { label: 'Best',    value: 'balanced'   },
-  { label: 'Fairest', value: 'fairness'   },
-  { label: 'Rating',  value: 'rating'     },
-  { label: 'Popular', value: 'popularity' },
+  { label: 'Best',    value: 'balanced',   title: 'Balance of rating, popularity and fair travel times' },
+  { label: 'Fairest', value: 'fairness',   title: 'Most equal travel times from every point' },
+  { label: 'Rating',  value: 'rating',     title: 'Highest rated first' },
+  { label: 'Popular', value: 'popularity', title: 'Most reviewed first' },
 ];
 
 const TRAVEL_MODES = [
@@ -86,6 +81,23 @@ const TRAVEL_MODES = [
   },
 ];
 
+// "Convergence" logo mark: three point-colored dots triangulating to the green center
+function LogoMark({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" className="flex-shrink-0">
+      <g stroke="#94a3b8" strokeWidth="3" strokeLinecap="round">
+        <line x1="15" y1="17" x2="31" y2="31" />
+        <line x1="50" y1="13" x2="33" y2="30" />
+        <line x1="41" y1="52" x2="33" y2="33" />
+      </g>
+      <circle cx="14" cy="16" r="7" fill="#4f46e5" />
+      <circle cx="51" cy="12" r="7" fill="#db2777" />
+      <circle cx="42" cy="53" r="7" fill="#0d9488" />
+      <circle cx="32" cy="31" r="8.5" fill="#16a34a" />
+    </svg>
+  );
+}
+
 function ChevronIcon({ open }) {
   return (
     <svg
@@ -98,21 +110,16 @@ function ChevronIcon({ open }) {
 }
 
 export default function App() {
-  // --- Location state ---
-  const [pointA, setPointA] = useState(null);
-  const [pointB, setPointB] = useState(null);
-  const [nameA, setNameA] = useState('');
-  const [nameB, setNameB] = useState('');
+  // --- Location state: array of { name, coord }, 2..MAX_POINTS slots ---
+  const [points, setPoints] = useState([emptyPoint(), emptyPoint()]);
 
   // --- Travel mode ---
   const [travelMode, setTravelMode] = useState('DRIVING');
 
-  // --- Directions + midpoint ---
-  const { directionsResult, midpoint, loading: dirLoading, error: dirError } = useDirections(pointA, pointB, travelMode);
-
   // --- Nearby places ---
   const [selectedType, setSelectedType] = useState(null);
   const [minRating, setMinRating] = useState(0);
+  const [openNow, setOpenNow] = useState(false);
   const [sortBy, setSortBy] = useState('balanced');
   const [radius, setRadius] = useState(DEFAULT_SEARCH_RADIUS_M);
   const [selectedPlace, setSelectedPlace] = useState(null);
@@ -125,109 +132,238 @@ export default function App() {
   // --- Share state ---
   const [copied, setCopied] = useState(false);
 
-  // --- Midpoint address (reverse geocode) ---
-  const [midpointAddress, setMidpointAddress] = useState(null);
+  // --- Center address (reverse geocode) ---
+  const [centerAddress, setCenterAddress] = useState(null);
   const apiLoaded = useApiIsLoaded();
   const geocoderRef = useRef(null);
+
+  // Filled coordinates, and the meeting center (geometric median) of all points
+  const filledCoords = useMemo(
+    () => points.map((p) => p.coord).filter(Boolean),
+    [points]
+  );
+  const center = useMemo(() => {
+    if (filledCoords.length < MIN_POINTS) return null;
+    // Geometric median, not centroid — a cluster of nearby points doesn't
+    // drag the center toward itself.
+    return geometricMedian(filledCoords);
+  }, [filledCoords]);
+
+  const hasCenter = !!center;
+
   useEffect(() => {
-    if (!midpoint || !apiLoaded) { setMidpointAddress(null); return; }
+    if (!center || !apiLoaded) { setCenterAddress(null); return; }
     if (!geocoderRef.current) geocoderRef.current = new window.google.maps.Geocoder();
-    geocoderRef.current.geocode({ location: { lat: midpoint.lat, lng: midpoint.lng } }, (results, status) => {
+    geocoderRef.current.geocode({ location: { lat: center.lat, lng: center.lng } }, (results, status) => {
       if (status !== 'OK' || !results?.length) return;
       const r = results.find(r => r.types.some(t => ['neighborhood','sublocality','locality','administrative_area_level_2'].includes(t))) || results[0];
       const comps = r.address_components;
       const get = (...types) => comps.find(c => types.some(t => c.types.includes(t)))?.long_name;
       const area = get('neighborhood', 'sublocality_level_1', 'sublocality');
       const city = get('locality', 'administrative_area_level_2');
-      setMidpointAddress(area && city ? `${area}, ${city}` : city || r.formatted_address);
+      setCenterAddress(area && city ? `${area}, ${city}` : city || r.formatted_address);
     });
-  }, [midpoint?.lat, midpoint?.lng, apiLoaded]);
+  }, [center?.lat, center?.lng, apiLoaded]);
 
-  // Auto-open bottom sheet when midpoint is found
+  // Auto-open bottom sheet when a center is found
   useEffect(() => {
-    if (midpoint) setBottomOpen(true);
-  }, [midpoint?.lat, midpoint?.lng]);
+    if (center) setBottomOpen(true);
+  }, [center?.lat, center?.lng]);
 
-  // Clear selected place whenever midpoint changes
+  // Clear selected place whenever the center changes
   useEffect(() => {
     setSelectedPlace(null);
-  }, [midpoint?.lat, midpoint?.lng]);
+  }, [center?.lat, center?.lng]);
 
   // When a place is selected: collapse inputs + close places list so the map + card are visible
   useEffect(() => {
     if (selectedPlace) { setBottomOpen(false); setTopOpen(false); }
   }, [selectedPlace]);
 
-  // Read URL params on first load (shared links)
+  // Read URL params on first load (shared links): p0=lat,lng & n0=name, …
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const alat = params.get('alat'), alng = params.get('alng'), an = params.get('an');
-    const blat = params.get('blat'), blng = params.get('blng'), bn = params.get('bn');
-    if (alat && alng) {
-      setPointA({ lat: parseFloat(alat), lng: parseFloat(alng) });
-      setNameA(an || `${alat}, ${alng}`);
+    const loaded = [];
+    for (let i = 0; i < MAX_POINTS; i++) {
+      const p = params.get(`p${i}`);
+      if (!p) continue;
+      const [lat, lng] = p.split(',').map(parseFloat);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        loaded[i] = { coord: { lat, lng }, name: params.get(`n${i}`) || `${lat}, ${lng}` };
+      }
     }
-    if (blat && blng) {
-      setPointB({ lat: parseFloat(blat), lng: parseFloat(blng) });
-      setNameB(bn || `${blat}, ${blng}`);
+    if (loaded.length) {
+      const next = [];
+      for (let i = 0; i < Math.max(MIN_POINTS, loaded.length); i++) next.push(loaded[i] || emptyPoint());
+      setPoints(next.slice(0, MAX_POINTS));
+      return;
     }
+    // No shared link — restore the last session's points, if any
+    try {
+      const saved = JSON.parse(localStorage.getItem('ftc:points') || 'null');
+      if (Array.isArray(saved) && saved.some((p) => p?.coord)) {
+        const next = saved.slice(0, MAX_POINTS).map((p) => ({
+          name: p?.name || '',
+          coord: Number.isFinite(p?.coord?.lat) && Number.isFinite(p?.coord?.lng)
+            ? { lat: p.coord.lat, lng: p.coord.lng }
+            : null,
+        }));
+        while (next.length < MIN_POINTS) next.push(emptyPoint());
+        setPoints(next);
+      }
+    } catch { /* corrupted storage — start fresh */ }
   }, []);
 
+  // Keep the URL in sync with the points, so the address bar / Share button
+  // is always a link that reproduces the current setup.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    points.forEach((p, i) => {
+      if (!p.coord) return;
+      params.set(`p${i}`, `${p.coord.lat.toFixed(5)},${p.coord.lng.toFixed(5)}`);
+      if (p.name) params.set(`n${i}`, p.name);
+    });
+    const qs = params.toString();
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+    try { localStorage.setItem('ftc:points', JSON.stringify(points)); } catch { /* quota/private mode */ }
+  }, [points]);
+
   const { places: allPlaces, loading: placesLoading, error: placesError } = useNearbyPlaces(
-    midpoint, pointA, pointB, selectedType, travelMode
+    center, filledCoords, selectedType, travelMode
   );
 
   const nearbyPlaces = useMemo(() => {
-    if (!midpoint) return [];
+    if (!center) return [];
     let results = allPlaces.filter((p) => {
       const withinRadius = haversineDistance(
-        midpoint.lat, midpoint.lng, p.location.latitude, p.location.longitude
+        center.lat, center.lng, p.location.latitude, p.location.longitude
       ) <= debouncedRadius;
       const meetsRating = minRating === 0 || (typeof p.rating === 'number' && p.rating >= minRating);
-      return withinRadius && meetsRating;
+      const meetsOpen = !openNow || p.currentOpeningHours?.openNow === true;
+      return withinRadius && meetsRating && meetsOpen;
     });
     if (sortBy === 'balanced') {
       results = [...results].sort((a, b) => calcScore(b) - calcScore(a));
     } else if (sortBy === 'fairness') {
-      results = [...results].sort((a, b) => (calcFairness(b.fromA, b.fromB) ?? -1) - (calcFairness(a.fromA, a.fromB) ?? -1));
+      results = [...results].sort((a, b) => (calcFairness(b.from) ?? -1) - (calcFairness(a.from) ?? -1));
     } else if (sortBy === 'rating') {
       results = [...results].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
     }
     return results;
-  }, [allPlaces, midpoint, debouncedRadius, minRating, sortBy]);
+  }, [allPlaces, center, debouncedRadius, minRating, openNow, sortBy]);
 
-  const handlePlaceA = useCallback(({ lat, lng }, name) => {
-    setPointA({ lat, lng }); setNameA(name);
+  const handlePlace = useCallback((index) => ({ lat, lng }, name) => {
+    setPoints((prev) => prev.map((p, i) => (i === index ? { coord: { lat, lng }, name } : p)));
   }, []);
 
-  const handlePlaceB = useCallback(({ lat, lng }, name) => {
-    setPointB({ lat, lng }); setNameB(name);
+  // Set a point from a raw map coordinate (map click / pin drag), then
+  // reverse-geocode a readable name for it asynchronously.
+  const setPointAt = useCallback((index, latLng) => {
+    const fallback = `${latLng.lat.toFixed(5)}, ${latLng.lng.toFixed(5)}`;
+    setPoints((prev) => {
+      const next = index >= prev.length ? [...prev, emptyPoint()] : [...prev];
+      next[index] = { coord: latLng, name: fallback };
+      return next;
+    });
+    if (!window.google?.maps?.Geocoder) return;
+    if (!geocoderRef.current) geocoderRef.current = new window.google.maps.Geocoder();
+    geocoderRef.current.geocode({ location: latLng }, (results, status) => {
+      if (status !== 'OK') return;
+      const name = pickReadableName(results);
+      if (!name) return;
+      setPoints((prev) => prev.map((p, i) =>
+        i === index && p.coord?.lat === latLng.lat && p.coord?.lng === latLng.lng
+          ? { ...p, name }
+          : p
+      ));
+    });
   }, []);
 
-  const handleSharePlace = useCallback(() => {
-    if (!selectedPlace?.googleMapsUri) return;
-    navigator.clipboard.writeText(selectedPlace.googleMapsUri)
+  // Map click fills the first empty slot, or adds a new point if all are filled
+  const handleMapClick = useCallback((latLng) => {
+    let idx = points.findIndex((p) => !p.coord);
+    if (idx === -1) {
+      if (points.length >= MAX_POINTS) return;
+      idx = points.length;
+    }
+    setPointAt(idx, latLng);
+  }, [points, setPointAt]);
+
+  const handleAddPoint = useCallback(() => {
+    setPoints((prev) => (prev.length >= MAX_POINTS ? prev : [...prev, emptyPoint()]));
+  }, []);
+
+  const handleRemovePoint = useCallback((index) => {
+    setPoints((prev) => (prev.length <= MIN_POINTS ? prev : prev.filter((_, i) => i !== index)));
+  }, []);
+
+  // Tapping a pin on the map removes that point; at the 2-slot minimum the
+  // slot is cleared instead of removed.
+  const handlePointClick = useCallback((index) => {
+    setPoints((prev) =>
+      prev.length > MIN_POINTS
+        ? prev.filter((_, i) => i !== index)
+        : prev.map((p, i) => (i === index ? emptyPoint() : p))
+    );
+  }, []);
+
+  // Copies the app URL, which encodes all points — recipients see the same setup
+  const handleShare = useCallback(() => {
+    navigator.clipboard.writeText(window.location.href)
       .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
-  }, [selectedPlace]);
+  }, []);
 
   const handleReset = () => {
-    setPointA(null); setPointB(null); setNameA(''); setNameB('');
-    setTravelMode('DRIVING'); setSelectedType(null); setMinRating(0);
+    setPoints([emptyPoint(), emptyPoint()]);
+    setTravelMode('DRIVING'); setSelectedType(null); setMinRating(0); setOpenNow(false);
     setSortBy('balanced'); setRadius(DEFAULT_SEARCH_RADIUS_M);
     setSelectedPlace(null); setBottomOpen(false); setTopOpen(true);
-    window.history.replaceState(null, '', window.location.pathname);
   };
 
-  const hasMidpoint = !!midpoint;
-  const totalTime = directionsResult?.routes?.[0]?.legs?.[0]?.duration?.text;
-  const totalDist = directionsResult?.routes?.[0]?.legs?.[0]?.distance?.text;
+  const anyFilled = filledCoords.length > 0;
+
+  // Location inputs block — shared between mobile + desktop
+  const inputsBlock = (
+    <>
+      {points.map((p, i) => (
+        <LocationInput
+          key={i}
+          label={`Point ${POINT_STYLES[i].label}`}
+          value={p.name}
+          onPlace={handlePlace(i)}
+          dotColor={POINT_STYLES[i].dot}
+          onRemove={points.length > MIN_POINTS ? () => handleRemovePoint(i) : undefined}
+        />
+      ))}
+      {points.length < MAX_POINTS && (
+        <button
+          onClick={handleAddPoint}
+          className="flex items-center justify-center gap-1.5 py-2 text-xs font-medium rounded-xl border border-dashed border-slate-300 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 transition"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Add point
+        </button>
+      )}
+      <div className="flex rounded-xl overflow-hidden border border-slate-200">
+        {TRAVEL_MODES.map((m) => (
+          <button key={m.value} onClick={() => setTravelMode(m.value)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition
+              ${travelMode === m.value ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
+            {m.icon}{m.label}
+          </button>
+        ))}
+      </div>
+    </>
+  );
 
   // ─── Shared filter/places JSX (used in both mobile bottom sheet and desktop sidebar) ───
 
-  const filterSection = hasMidpoint && (
+  const filterSection = hasCenter && (
     <>
       {/* Radius */}
-      <div className="px-5 py-3 border-b border-slate-100">
+      <div className="px-5 py-3 short:py-1.5 border-b border-slate-100">
         <div className="flex items-center justify-between mb-1.5">
           <label htmlFor="radius-slider" className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Search radius</label>
           <span className="text-xs font-bold text-indigo-600">{radius >= 1000 ? `${(radius / 1000).toFixed(1)} km` : `${radius} m`}</span>
@@ -239,11 +375,13 @@ export default function App() {
           aria-label="Search radius in meters"
           className="w-full h-1.5 rounded-full accent-indigo-600 cursor-pointer"
         />
-        <div className="flex justify-between text-xs text-slate-300 mt-1"><span>100 m</span><span>2 km</span></div>
+        <div className="flex justify-between text-xs text-slate-300 mt-1 short:hidden">
+          <span>{MIN_SEARCH_RADIUS_M} m</span><span>{MAX_SEARCH_RADIUS_M / 1000} km</span>
+        </div>
       </div>
 
       {/* Type chips */}
-      <div className="px-5 py-3 border-b border-slate-100">
+      <div className="px-5 py-3 short:py-1.5 border-b border-slate-100 bg-slate-50">
         <div className="flex flex-wrap gap-1.5">
           {PLACE_TYPES.map((type) => {
             const active = selectedType === type.value;
@@ -259,22 +397,28 @@ export default function App() {
       </div>
 
       {/* Rating + Sort — stacked to avoid overflow on narrow screens */}
-      <div className="px-5 py-3 border-b border-slate-100 flex flex-col gap-2">
+      <div className="px-5 py-3 short:py-1.5 border-b border-slate-100 flex flex-col gap-2 short:gap-1">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide mr-1">Rating</span>
           {RATING_FILTERS.map((f) => (
             <button key={f.label} onClick={() => setMinRating(f.value)}
               className={`px-2 py-0.5 rounded-full text-xs font-medium transition
-                ${minRating === f.value ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                ${minRating === f.value ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
               {f.label}
             </button>
           ))}
+          <button onClick={() => setOpenNow((v) => !v)}
+            title="Only show places that are open right now"
+            className={`px-2 py-0.5 rounded-full text-xs font-medium transition
+              ${openNow ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+            Open now
+          </button>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Sort</span>
           <div className="flex items-center gap-1 bg-slate-100 rounded-full p-0.5">
             {SORT_OPTIONS.map((s) => (
-              <button key={s.value} onClick={() => setSortBy(s.value)}
+              <button key={s.value} onClick={() => setSortBy(s.value)} title={s.title}
                 className={`px-2 py-0.5 rounded-full text-xs font-medium transition
                   ${sortBy === s.value ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                 {s.label}
@@ -287,8 +431,8 @@ export default function App() {
   );
 
   const placesSection = (
-    <div className="px-5 py-4">
-      {hasMidpoint && (
+    <div className="px-5 py-4 short:py-2 bg-slate-50">
+      {hasCenter && (
         <h2 className="text-sm font-semibold text-slate-700 mb-1">
           Nearby Places
           <span className="ml-1 text-xs font-normal text-slate-400">
@@ -301,9 +445,9 @@ export default function App() {
         selectedPlaceId={selectedPlace?.id} onSelectPlace={setSelectedPlace}
       />
       {/* Empty states */}
-      {!pointA && !pointB && (
-        <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center">
+      {!anyFilled && (
+        <div className="flex flex-col items-center justify-center py-10 short:py-3 text-center gap-3">
+          <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center short:hidden">
             <svg className="w-7 h-7 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
@@ -311,18 +455,25 @@ export default function App() {
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-700">Find a fair meeting spot</p>
-            <p className="text-xs text-slate-400 mt-1">Enter two locations to find places equally close to both of you</p>
+            <p className="text-xs text-slate-400 mt-1">Enter two or more locations — or tap them on the map — to find places equally close to everyone</p>
           </div>
         </div>
       )}
-      {pointA && !pointB && (
-        <p className="text-xs text-slate-400 text-center py-6">Now add Point B to find the midpoint</p>
+      {anyFilled && !hasCenter && (
+        <p className="text-xs text-slate-400 text-center py-6">Add at least one more location to find the center</p>
       )}
-      {!pointA && pointB && (
-        <p className="text-xs text-slate-400 text-center py-6">Now add Point A to find the midpoint</p>
-      )}
-      {hasMidpoint && !placesLoading && nearbyPlaces.length === 0 && !placesError && (
-        <p className="text-xs text-slate-400 text-center py-6">No places found nearby — try expanding the search radius</p>
+      {hasCenter && !placesLoading && nearbyPlaces.length === 0 && !placesError && (
+        <div className="flex flex-col items-center gap-2 py-6 text-center">
+          <p className="text-xs text-slate-400">No places found nearby</p>
+          {radius < MAX_SEARCH_RADIUS_M && (
+            <button
+              onClick={() => setRadius(Math.min(radius * 2, MAX_SEARCH_RADIUS_M))}
+              className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition"
+            >
+              Widen search radius
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -334,8 +485,10 @@ export default function App() {
         {/* ── Single map instance — always full screen ── */}
         <div className="absolute inset-0">
           <MapView
-            pointA={pointA} pointB={pointB} midpoint={midpoint} radius={radius}
-            directionsResult={directionsResult} selectedPlace={selectedPlace}
+            points={points.map((p) => p.coord)} center={center} radius={radius}
+            selectedPlace={selectedPlace}
+            onMapClick={handleMapClick} onPointDrag={setPointAt}
+            onPointClick={handlePointClick}
           />
         </div>
 
@@ -344,25 +497,27 @@ export default function App() {
         ════════════════════════════════════════ */}
         <div className="sm:hidden absolute inset-0 pointer-events-none flex flex-col">
 
-          {/* ── Top panel ── */}
-          <div className="flex-shrink-0 pointer-events-auto relative z-30">
+          {/* ── Top panel — floating card, map visible around it ── */}
+          <div className="flex-shrink-0 pointer-events-auto relative z-30 p-3">
+            <div className="rounded-2xl bg-white shadow-lg overflow-hidden">
 
             {/* Header bar — always visible */}
-            <div className="bg-white shadow-sm px-4 py-3 flex items-center justify-between">
+            <div className="px-4 py-3 flex items-center justify-between">
               <button
                 onClick={() => setTopOpen((v) => !v)}
                 className="flex items-center gap-2 text-left"
               >
+                <LogoMark size={20} />
                 <span className="text-sm font-bold text-slate-800">Find the Center</span>
                 <ChevronIcon open={topOpen} />
               </button>
               <div className="flex items-center gap-3">
-                {selectedPlace && (
-                  <button onClick={handleSharePlace} className="text-xs text-indigo-500 font-medium">
-                    {copied ? 'Copied!' : 'Share ↗'}
+                {hasCenter && (
+                  <button onClick={handleShare} title="Copy a link to this setup" className="text-xs text-indigo-500 font-medium">
+                    {copied ? 'Copied!' : 'Share'}
                   </button>
                 )}
-                {(pointA || pointB) && (
+                {anyFilled && (
                   <button onClick={handleReset} className="text-xs text-slate-400 hover:text-rose-500 font-medium">
                     Reset
                   </button>
@@ -372,73 +527,50 @@ export default function App() {
 
             {/* Collapsible inputs */}
             {topOpen && (
-              <div className="bg-slate-50 px-4 pt-1 pb-4 flex flex-col gap-3 border-t border-slate-200">
-                <LocationInput label="Point A" value={nameA} onPlace={handlePlaceA} />
-                <LocationInput label="Point B" value={nameB} onPlace={handlePlaceB} />
-                <div className="flex rounded-xl overflow-hidden border border-slate-200">
-                  {TRAVEL_MODES.map((m) => (
-                    <button key={m.value} onClick={() => setTravelMode(m.value)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition
-                        ${travelMode === m.value ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
-                      {m.icon}{m.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="bg-slate-50 border-t border-slate-200 px-4 pt-2 pb-4 flex flex-col gap-3">
+                {inputsBlock}
               </div>
             )}
-
-            {/* Loading + error banners */}
-            {dirLoading && (
-              <div className="bg-white/90 backdrop-blur-sm mx-3 mt-2 px-3 py-2 rounded-xl shadow flex items-center gap-2">
-                <svg className="animate-spin w-3.5 h-3.5 text-indigo-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                  <path d="M12 2a10 10 0 0 1 10 10" />
-                </svg>
-                <p className="text-xs text-slate-500">Finding route…</p>
-              </div>
-            )}
-            {dirError && (
-              <div className="bg-rose-50/95 backdrop-blur-sm mx-3 mt-2 px-3 py-2 rounded-xl border border-rose-100 text-xs text-rose-600 shadow">
-                {dirError}
-              </div>
-            )}
+            </div>
           </div>
 
-          {/* ── Selected place card — shown above the places panel ── */}
-          {selectedPlace && (
-            <div className="flex-shrink-0 pointer-events-auto relative z-20">
+          {/* Transparent flex-1 gap — shows the map below */}
+          <div className="flex-1" />
+
+          {/* ── Bottom sheet: selected place card + places panel, rounded top ── */}
+          <div className="flex-shrink-0 pointer-events-auto relative z-20 rounded-t-2xl overflow-hidden shadow-[0_-6px_20px_rgba(0,0,0,0.12)]">
+
+            {selectedPlace && (
               <SelectedPlaceCard place={selectedPlace} onDismiss={() => setSelectedPlace(null)} />
-            </div>
-          )}
+            )}
 
-          {/* ── Places panel — anchored directly below inputs ── */}
-          <div className="flex-shrink-0 pointer-events-auto relative z-20">
-
-            {/* Handle bar — toggles the list */}
+            {/* Handle bar — grab pill + summary, toggles the list */}
             <button
               onClick={() => setBottomOpen((v) => !v)}
-              className="w-full bg-white border-t border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.08)] px-5 py-3 flex items-center justify-between"
+              aria-expanded={bottomOpen}
+              className={`w-full bg-white px-5 pt-2 pb-3 flex flex-col items-center gap-1.5 ${selectedPlace ? 'border-t border-slate-100' : ''}`}
             >
-              <div className="flex items-center gap-2 min-w-0">
-                {hasMidpoint ? (
-                  <>
-                    <span className="text-green-500 text-base flex-shrink-0">★</span>
-                    <span className="text-sm font-semibold text-slate-700 truncate">
-                      {nearbyPlaces.length > 0
-                        ? `${nearbyPlaces.length} place${nearbyPlaces.length !== 1 ? 's' : ''} nearby`
-                        : 'Midpoint found'}
-                    </span>
-                    {midpointAddress && (
-                      <span className="text-xs text-slate-400 truncate hidden xs:inline">{midpointAddress}</span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-sm text-slate-400">Enter two locations above</span>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 text-slate-400 flex-shrink-0">
-                <span className="text-xs">{bottomOpen ? 'Hide' : 'Show'}</span>
-                <ChevronIcon open={bottomOpen} />
+              <div className="w-9 h-1 rounded-full bg-slate-300" />
+              <div className="w-full flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  {hasCenter ? (
+                    <>
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500 ring-2 ring-green-100 flex-shrink-0" />
+                      <span className="text-sm font-semibold text-slate-700 truncate">
+                        {nearbyPlaces.length > 0
+                          ? `${nearbyPlaces.length} place${nearbyPlaces.length !== 1 ? 's' : ''} nearby`
+                          : 'Center found'}
+                      </span>
+                      {centerAddress && (
+                        <span className="text-xs text-slate-400 truncate hidden xs:inline">{centerAddress}</span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-sm text-slate-400">Enter two locations above</span>
+                  )}
+                </div>
+                {/* Sheet opens upward: point up when closed, down when open */}
+                <span className="text-slate-400 flex-shrink-0"><ChevronIcon open={!bottomOpen} /></span>
               </div>
             </button>
 
@@ -447,43 +579,41 @@ export default function App() {
               <div data-scroll-preserve className="bg-white overflow-y-auto overflow-x-hidden max-h-[55vh] shadow-lg">
                 {filterSection}
                 {placesSection}
-                {hasMidpoint && !dirLoading && (
+                {hasCenter && (
                   <div className="px-5 py-2.5 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
-                    <span className="text-green-400">★</span>
-                    <span>{midpointAddress || `${midpoint.lat.toFixed(4)}, ${midpoint.lng.toFixed(4)}`}</span>
-                    {(totalTime || totalDist) && (
-                      <span className="ml-auto">{totalDist} · {totalTime}</span>
-                    )}
+                    <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                    <span>{centerAddress || `${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`}</span>
+                    <span className="ml-auto">{filledCoords.length} points</span>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Transparent flex-1 gap — shows the map below */}
-          <div className="flex-1" />
-
         </div>{/* end mobile UI */}
 
         {/* ════════════════════════════════════════
             DESKTOP UI  (hidden on mobile)
         ════════════════════════════════════════ */}
-        <aside data-scroll-preserve className="hidden sm:flex flex-col absolute top-0 left-0 bottom-0 z-10 w-80 md:w-96 bg-white shadow-xl overflow-y-auto overflow-x-hidden">
+        <aside data-scroll-preserve className="hidden sm:flex flex-col absolute top-0 left-0 bottom-0 z-10 w-80 md:w-96 short:w-72 bg-white shadow-xl overflow-y-auto overflow-x-hidden">
 
           {/* Header */}
-          <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex-shrink-0">
+          <div className="px-5 pt-5 pb-4 short:pt-2.5 short:pb-2 border-b border-slate-100 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-lg font-bold text-slate-800 tracking-tight">Find the Center</h1>
-                <p className="text-xs text-slate-400 mt-0.5">Find a fair meeting spot between two locations</p>
+                <h1 className="flex items-center gap-2 text-lg short:text-sm font-bold text-slate-800 tracking-tight">
+                  <LogoMark size={24} />
+                  Find the Center
+                </h1>
+                <p className="text-xs text-slate-400 mt-0.5 short:hidden">Find a fair meeting spot between multiple locations</p>
               </div>
               <div className="flex items-center gap-2">
-                {selectedPlace && (
-                  <button onClick={handleSharePlace} className="text-xs text-indigo-500 hover:text-indigo-700 transition font-medium">
-                    {copied ? 'Copied!' : 'Share ↗'}
+                {hasCenter && (
+                  <button onClick={handleShare} title="Copy a link to this setup" className="text-xs text-indigo-500 hover:text-indigo-700 transition font-medium whitespace-nowrap">
+                    {copied ? 'Copied!' : 'Share link'}
                   </button>
                 )}
-                {(pointA || pointB) && (
+                {anyFilled && (
                   <button onClick={handleReset} aria-label="Reset all points and filters"
                     className="text-xs text-slate-400 hover:text-rose-500 transition font-medium">
                     Reset
@@ -494,35 +624,9 @@ export default function App() {
           </div>
 
           {/* Inputs */}
-          <div className="px-5 py-4 flex flex-col gap-4 bg-slate-50 flex-shrink-0 relative z-10 shadow-[0_4px_10px_rgba(0,0,0,0.08)]">
-            <LocationInput label="Point A" value={nameA} onPlace={handlePlaceA} />
-            <LocationInput label="Point B" value={nameB} onPlace={handlePlaceB} />
-            <div className="flex rounded-xl overflow-hidden border border-slate-200">
-              {TRAVEL_MODES.map((m) => (
-                <button key={m.value} onClick={() => setTravelMode(m.value)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition
-                    ${travelMode === m.value ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
-                  {m.icon}{m.label}
-                </button>
-              ))}
-            </div>
+          <div className="px-5 py-4 short:py-2 flex flex-col gap-4 short:gap-2 bg-slate-50 flex-shrink-0 relative z-10 shadow-[0_4px_10px_rgba(0,0,0,0.08)]">
+            {inputsBlock}
           </div>
-
-          {/* Loading / error */}
-          {dirLoading && (
-            <div className="px-5 py-4 flex items-center gap-2 border-b border-slate-100 flex-shrink-0">
-              <svg className="animate-spin w-4 h-4 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                <path d="M12 2a10 10 0 0 1 10 10" />
-              </svg>
-              <p className="text-sm text-slate-500">Finding the best route…</p>
-            </div>
-          )}
-          {dirError && (
-            <div className="mx-5 mt-4 p-3 rounded-xl bg-rose-50 border border-rose-100 text-sm text-rose-600 flex-shrink-0">
-              {dirError}
-            </div>
-          )}
 
           {/* Selected place detail card */}
           {selectedPlace && (
@@ -535,16 +639,14 @@ export default function App() {
           {filterSection}
 
           {/* Places */}
-          <div className="flex-1">{placesSection}</div>
+          <div className="flex-1 bg-slate-50">{placesSection}</div>
 
-          {/* Compact midpoint info — bottom, low-priority */}
-          {hasMidpoint && !dirLoading && (
+          {/* Compact center info — bottom, low-priority */}
+          {hasCenter && (
             <div className="px-5 py-2.5 border-t border-slate-100 flex-shrink-0 flex items-center gap-2 text-xs text-slate-400">
-              <span className="text-green-400">★</span>
-              <span className="truncate">{midpointAddress || `${midpoint.lat.toFixed(4)}, ${midpoint.lng.toFixed(4)}`}</span>
-              {(totalTime || totalDist) && (
-                <span className="ml-auto flex-shrink-0">{totalDist} · {totalTime}</span>
-              )}
+              <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+              <span className="truncate">{centerAddress || `${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`}</span>
+              <span className="ml-auto flex-shrink-0">{filledCoords.length} points</span>
             </div>
           )}
 

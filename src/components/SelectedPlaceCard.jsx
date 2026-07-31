@@ -1,4 +1,6 @@
 import { calcFairness } from '../utils/fairness.js';
+import { POINT_STYLES } from '../constants.js';
+import { Stars } from './PlaceCard.jsx';
 
 export default function SelectedPlaceCard({ place, onDismiss }) {
   const name = place.displayName?.text || 'Unknown place';
@@ -7,23 +9,22 @@ export default function SelectedPlaceCard({ place, onDismiss }) {
   const ratingCount = place.userRatingCount;
   const mapsUri = place.googleMapsUri || '';
 
-  const timeA = place.fromA?.status === 'OK' ? place.fromA.duration.text : null;
-  const distA = place.fromA?.status === 'OK' ? place.fromA.distance.text : null;
-  const timeB = place.fromB?.status === 'OK' ? place.fromB.duration.text : null;
-  const distB = place.fromB?.status === 'OK' ? place.fromB.distance.text : null;
+  const from = place.from ?? [];
+  const legs = from.map((e, i) => ({
+    label: POINT_STYLES[i].label,
+    dot: POINT_STYLES[i].dot,
+    time: e?.status === 'OK' ? e.duration.text : null,
+    dist: e?.status === 'OK' ? e.distance.text : null,
+  })).filter((l) => l.time);
 
-  const fairness = calcFairness(place.fromA, place.fromB);
+  const fairness = calcFairness(from);
   const fairnessColor =
     fairness === null ? '' :
     fairness >= 80 ? 'text-green-600' :
     fairness >= 60 ? 'text-amber-500' : 'text-rose-500';
 
-  const stars = typeof rating === 'number'
-    ? Math.round(rating * 2) / 2
-    : null;
-
   return (
-    <div className="px-4 pt-3 pb-4 bg-white border-t border-slate-100 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+    <div className="px-4 pt-3 pb-4 bg-white">
       {/* Name + dismiss */}
       <div className="flex items-start gap-2 mb-1">
         <h3 className="flex-1 text-sm font-bold text-slate-800 leading-snug">{name}</h3>
@@ -45,9 +46,7 @@ export default function SelectedPlaceCard({ place, onDismiss }) {
       {/* Rating */}
       {typeof rating === 'number' && (
         <div className="flex items-center gap-1.5 mb-2">
-          <span className="text-amber-400 text-sm leading-none">
-            {'★'.repeat(Math.round(stars))}{'☆'.repeat(5 - Math.round(stars))}
-          </span>
+          <Stars rating={rating} />
           <span className="text-xs font-semibold text-slate-700">{rating.toFixed(1)}</span>
           {typeof ratingCount === 'number' && (
             <span className="text-xs text-slate-400">({ratingCount.toLocaleString()} reviews)</span>
@@ -56,26 +55,21 @@ export default function SelectedPlaceCard({ place, onDismiss }) {
       )}
 
       {/* Travel times */}
-      {(timeA || timeB) && (
+      {legs.length > 0 && (
         <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3">
-          {timeA && (
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0" />
-              <span className="text-slate-500">From A:</span>
-              <span className="font-semibold text-slate-700">{timeA}</span>
-              {distA && <span className="text-slate-400">· {distA}</span>}
+          {legs.map((l) => (
+            <div key={l.label} className="flex items-center gap-1.5 text-xs">
+              <span className={`w-2 h-2 rounded-full ${l.dot} flex-shrink-0`} />
+              <span className="text-slate-500">From {l.label}:</span>
+              <span className="font-semibold text-slate-700">{l.time}</span>
+              {l.dist && <span className="text-slate-400">· {l.dist}</span>}
             </div>
-          )}
-          {timeB && (
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0" />
-              <span className="text-slate-500">From B:</span>
-              <span className="font-semibold text-slate-700">{timeB}</span>
-              {distB && <span className="text-slate-400">· {distB}</span>}
-            </div>
-          )}
+          ))}
           {fairness !== null && (
-            <div className={`flex items-center gap-1 text-xs font-medium ${fairnessColor}`}>
+            <div
+              className={`flex items-center gap-1 text-xs font-medium ${fairnessColor}`}
+              title="Fairness: 100% = identical travel time from every point"
+            >
               <span>⚖</span>
               <span>{fairness}% balanced</span>
             </div>

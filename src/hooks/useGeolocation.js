@@ -7,7 +7,7 @@ const GEOLOCATION_ERRORS = {
 };
 
 // Extract a short, human-readable name from Geocoder results
-function pickReadableName(results) {
+export function pickReadableName(results) {
   if (!results?.length) return null;
 
   // Prefer a result with a street route
