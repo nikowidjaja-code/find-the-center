@@ -456,11 +456,12 @@ export default function App() {
         ════════════════════════════════════════ */}
         <div className="sm:hidden absolute inset-0 pointer-events-none flex flex-col">
 
-          {/* ── Top panel ── */}
-          <div className="flex-shrink-0 pointer-events-auto relative z-30">
+          {/* ── Top panel — floating card, map visible around it ── */}
+          <div className="flex-shrink-0 pointer-events-auto relative z-30 p-3">
+            <div className="rounded-2xl bg-white shadow-lg overflow-hidden">
 
             {/* Header bar — always visible */}
-            <div className="bg-white border-b-2 border-slate-300 shadow-[0_6px_16px_rgba(0,0,0,0.25)] px-4 py-3 flex items-center justify-between">
+            <div className="px-4 py-3 flex items-center justify-between">
               <button
                 onClick={() => setTopOpen((v) => !v)}
                 className="flex items-center gap-2 text-left"
@@ -484,10 +485,11 @@ export default function App() {
 
             {/* Collapsible inputs */}
             {topOpen && (
-              <div className="bg-slate-50 px-4 pt-2 pb-4 flex flex-col gap-3">
+              <div className="bg-slate-50 border-t border-slate-200 px-4 pt-2 pb-4 flex flex-col gap-3">
                 {inputsBlock}
               </div>
             )}
+            </div>
           </div>
 
           {/* Transparent flex-1 gap — shows the map below */}
