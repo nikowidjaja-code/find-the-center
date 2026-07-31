@@ -6,6 +6,7 @@ import PlacesList from './components/PlacesList.jsx';
 import SelectedPlaceCard from './components/SelectedPlaceCard.jsx';
 import { useDebounce } from './hooks/useDebounce.js';
 import { useNearbyPlaces } from './hooks/useNearbyPlaces.js';
+import { pickReadableName } from './hooks/useGeolocation.js';
 import { calcFairness, calcScore } from './utils/fairness.js';
 import {
   DEFAULT_SEARCH_RADIUS_M,
@@ -191,6 +192,19 @@ export default function App() {
     }
   }, []);
 
+  // Keep the URL in sync with the points, so the address bar / Share button
+  // is always a link that reproduces the current setup.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    points.forEach((p, i) => {
+      if (!p.coord) return;
+      params.set(`p${i}`, `${p.coord.lat.toFixed(5)},${p.coord.lng.toFixed(5)}`);
+      if (p.name) params.set(`n${i}`, p.name);
+    });
+    const qs = params.toString();
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+  }, [points]);
+
   const { places: allPlaces, loading: placesLoading, error: placesError } = useNearbyPlaces(
     center, filledCoords, selectedType, travelMode
   );
@@ -218,6 +232,39 @@ export default function App() {
     setPoints((prev) => prev.map((p, i) => (i === index ? { coord: { lat, lng }, name } : p)));
   }, []);
 
+  // Set a point from a raw map coordinate (map click / pin drag), then
+  // reverse-geocode a readable name for it asynchronously.
+  const setPointAt = useCallback((index, latLng) => {
+    const fallback = `${latLng.lat.toFixed(5)}, ${latLng.lng.toFixed(5)}`;
+    setPoints((prev) => {
+      const next = index >= prev.length ? [...prev, emptyPoint()] : [...prev];
+      next[index] = { coord: latLng, name: fallback };
+      return next;
+    });
+    if (!window.google?.maps?.Geocoder) return;
+    if (!geocoderRef.current) geocoderRef.current = new window.google.maps.Geocoder();
+    geocoderRef.current.geocode({ location: latLng }, (results, status) => {
+      if (status !== 'OK') return;
+      const name = pickReadableName(results);
+      if (!name) return;
+      setPoints((prev) => prev.map((p, i) =>
+        i === index && p.coord?.lat === latLng.lat && p.coord?.lng === latLng.lng
+          ? { ...p, name }
+          : p
+      ));
+    });
+  }, []);
+
+  // Map click fills the first empty slot, or adds a new point if all are filled
+  const handleMapClick = useCallback((latLng) => {
+    let idx = points.findIndex((p) => !p.coord);
+    if (idx === -1) {
+      if (points.length >= MAX_POINTS) return;
+      idx = points.length;
+    }
+    setPointAt(idx, latLng);
+  }, [points, setPointAt]);
+
   const handleAddPoint = useCallback(() => {
     setPoints((prev) => (prev.length >= MAX_POINTS ? prev : [...prev, emptyPoint()]));
   }, []);
@@ -226,18 +273,17 @@ export default function App() {
     setPoints((prev) => (prev.length <= MIN_POINTS ? prev : prev.filter((_, i) => i !== index)));
   }, []);
 
-  const handleSharePlace = useCallback(() => {
-    if (!selectedPlace?.googleMapsUri) return;
-    navigator.clipboard.writeText(selectedPlace.googleMapsUri)
+  // Copies the app URL, which encodes all points — recipients see the same setup
+  const handleShare = useCallback(() => {
+    navigator.clipboard.writeText(window.location.href)
       .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
-  }, [selectedPlace]);
+  }, []);
 
   const handleReset = () => {
     setPoints([emptyPoint(), emptyPoint()]);
     setTravelMode('DRIVING'); setSelectedType(null); setMinRating(0);
     setSortBy('balanced'); setRadius(DEFAULT_SEARCH_RADIUS_M);
     setSelectedPlace(null); setBottomOpen(false); setTopOpen(true);
-    window.history.replaceState(null, '', window.location.pathname);
   };
 
   const anyFilled = filledCoords.length > 0;
@@ -367,7 +413,7 @@ export default function App() {
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-700">Find a fair meeting spot</p>
-            <p className="text-xs text-slate-400 mt-1">Enter two or more locations to find places equally close to everyone</p>
+            <p className="text-xs text-slate-400 mt-1">Enter two or more locations — or tap them on the map — to find places equally close to everyone</p>
           </div>
         </div>
       )}
@@ -389,6 +435,7 @@ export default function App() {
           <MapView
             points={points.map((p) => p.coord)} center={center} radius={radius}
             selectedPlace={selectedPlace}
+            onMapClick={handleMapClick} onPointDrag={setPointAt}
           />
         </div>
 
@@ -410,9 +457,9 @@ export default function App() {
                 <ChevronIcon open={topOpen} />
               </button>
               <div className="flex items-center gap-3">
-                {selectedPlace && (
-                  <button onClick={handleSharePlace} className="text-xs text-indigo-500 font-medium">
-                    {copied ? 'Copied!' : 'Share ↗'}
+                {hasCenter && (
+                  <button onClick={handleShare} title="Copy a link to this setup" className="text-xs text-indigo-500 font-medium">
+                    {copied ? 'Copied!' : 'Share'}
                   </button>
                 )}
                 {anyFilled && (
@@ -503,9 +550,9 @@ export default function App() {
                 <p className="text-xs text-slate-400 mt-0.5">Find a fair meeting spot between multiple locations</p>
               </div>
               <div className="flex items-center gap-2">
-                {selectedPlace && (
-                  <button onClick={handleSharePlace} className="text-xs text-indigo-500 hover:text-indigo-700 transition font-medium">
-                    {copied ? 'Copied!' : 'Share ↗'}
+                {hasCenter && (
+                  <button onClick={handleShare} title="Copy a link to this setup" className="text-xs text-indigo-500 hover:text-indigo-700 transition font-medium">
+                    {copied ? 'Copied!' : 'Share link'}
                   </button>
                 )}
                 {anyFilled && (

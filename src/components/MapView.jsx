@@ -5,9 +5,11 @@ import { POINT_STYLES } from '../constants.js';
 // Renders a custom teardrop SVG pin using the legacy Marker API (no Map ID
 // required). White halo ring + drop shadow make it read clearly as a placed
 // marker and stand apart from Google's built-in red pins / blue location dot.
-function PinMarker({ position, color, label, scale = 1, zIndex = 0 }) {
+function PinMarker({ position, color, label, scale = 1, zIndex = 0, draggable = false, onDragEnd }) {
   const map = useMap();
   const markerRef = useRef(null);
+  const onDragEndRef = useRef(onDragEnd);
+  onDragEndRef.current = onDragEnd;
 
   useEffect(() => {
     if (!map || !position) return;
@@ -32,6 +34,7 @@ function PinMarker({ position, color, label, scale = 1, zIndex = 0 }) {
         map,
         position,
         zIndex,
+        draggable,
         icon: {
           url,
           scaledSize: new window.google.maps.Size(w, h),
@@ -39,6 +42,11 @@ function PinMarker({ position, color, label, scale = 1, zIndex = 0 }) {
           anchor: new window.google.maps.Point(w / 2, Math.round(h * 0.9)),
         },
       });
+      if (draggable) {
+        markerRef.current.addListener('dragend', (e) =>
+          onDragEndRef.current?.({ lat: e.latLng.lat(), lng: e.latLng.lng() })
+        );
+      }
     }
 
     return () => {
@@ -46,8 +54,37 @@ function PinMarker({ position, color, label, scale = 1, zIndex = 0 }) {
       markerRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, position?.lat, position?.lng, color, label, scale, zIndex]);
+  }, [map, position?.lat, position?.lng, color, label, scale, zIndex, draggable]);
 
+  return null;
+}
+
+// Refit the viewport to show every pin whenever the set of points/center
+// changes. Padded so the overlaid panels (desktop sidebar, mobile header)
+// don't cover the pins. Keyed on coordinates so user panning is untouched.
+function FitBounds({ points, center }) {
+  const map = useMap();
+  const coords = [...points, center].filter(Boolean);
+  const key = coords.map((c) => `${c.lat.toFixed(5)},${c.lng.toFixed(5)}`).join('|');
+
+  useEffect(() => {
+    if (!map || coords.length === 0) return;
+    if (coords.length === 1) {
+      map.panTo(coords[0]);
+      map.setZoom(14);
+      return;
+    }
+    const bounds = new window.google.maps.LatLngBounds();
+    coords.forEach((c) => bounds.extend(c));
+    const desktop = window.matchMedia('(min-width: 640px)').matches;
+    map.fitBounds(
+      bounds,
+      desktop
+        ? { top: 60, bottom: 60, left: 440, right: 60 } // sidebar is 320–384px wide
+        : { top: 200, bottom: 80, left: 40, right: 40 } // below the mobile input panel
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, key]);
   return null;
 }
 
@@ -94,6 +131,7 @@ function CenterCircle({ center, radius = 500 }) {
 
 export default function MapView({
   points = [], center, radius = 500, selectedPlace = null,
+  onMapClick, onPointDrag,
 }) {
   const defaultCenter = { lat: 2, lng: 110 };
   const filled = points.filter(Boolean);
@@ -117,6 +155,7 @@ export default function MapView({
       disableDefaultUI={false}
       streetViewControl={false}
       style={{ width: '100%', height: '100%' }}
+      onClick={onMapClick ? (ev) => { const ll = ev.detail?.latLng; if (ll) onMapClick(ll); } : undefined}
     >
       {points.map((p, i) =>
         p ? (
@@ -127,6 +166,8 @@ export default function MapView({
             label={POINT_STYLES[i].label}
             scale={1.15}
             zIndex={10}
+            draggable={!!onPointDrag}
+            onDragEnd={(ll) => onPointDrag(i, ll)}
           />
         ) : null
       )}
@@ -143,6 +184,7 @@ export default function MapView({
       )}
 
       <CenterCircle center={center} radius={radius} />
+      <FitBounds points={filled} center={center} />
       <MapController selectedPlace={selectedPlace} />
     </Map>
   );

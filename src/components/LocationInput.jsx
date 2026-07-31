@@ -42,6 +42,26 @@ export default function LocationInput({ label, value, onPlace, dotColor = 'bg-in
     });
   };
 
+  // Enter with no highlighted suggestion: the Autocomplete widget silently does
+  // nothing, so geocode the typed text and take the top match instead.
+  const handleKeyDown = (e) => {
+    if (e.key !== 'Enter' || !window.google?.maps?.Geocoder) return;
+    const highlighted = [...document.querySelectorAll('.pac-container')].some(
+      (c) => c.offsetParent !== null && c.querySelector('.pac-item-selected')
+    );
+    if (highlighted) return; // let the widget commit the selection
+    const text = inputRef.current?.value.trim();
+    if (!text) return;
+    e.preventDefault();
+    new window.google.maps.Geocoder().geocode({ address: text }, (results, status) => {
+      if (status !== 'OK' || !results?.[0]?.geometry?.location) return;
+      const loc = results[0].geometry.location;
+      const name = results[0].formatted_address;
+      setInputValue(name);
+      onPlace({ lat: loc.lat(), lng: loc.lng() }, name);
+    });
+  };
+
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
@@ -68,6 +88,7 @@ export default function LocationInput({ label, value, onPlace, dotColor = 'bg-in
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder={`Search for ${label}...`}
           className="flex-1 px-3 py-2 text-sm rounded-lg border bg-white text-slate-800 placeholder-slate-400 outline-none transition border-slate-200 hover:border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
         />
