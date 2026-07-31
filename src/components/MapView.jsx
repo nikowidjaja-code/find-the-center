@@ -154,6 +154,8 @@ export default function MapView({
       gestureHandling="greedy"
       disableDefaultUI={false}
       streetViewControl={false}
+      mapTypeControl={false}
+      fullscreenControl={false}
       style={{ width: '100%', height: '100%' }}
       onClick={onMapClick ? (ev) => { const ll = ev.detail?.latLng; if (ll) onMapClick(ll); } : undefined}
     >

@@ -24,7 +24,7 @@ export default function SelectedPlaceCard({ place, onDismiss }) {
     fairness >= 60 ? 'text-amber-500' : 'text-rose-500';
 
   return (
-    <div className="px-4 pt-3 pb-4 bg-white border-t border-slate-100 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+    <div className="px-4 pt-3 pb-4 bg-white">
       {/* Name + dismiss */}
       <div className="flex items-start gap-2 mb-1">
         <h3 className="flex-1 text-sm font-bold text-slate-800 leading-snug">{name}</h3>

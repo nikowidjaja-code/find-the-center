@@ -495,41 +495,39 @@ export default function App() {
           {/* Transparent flex-1 gap — shows the map below */}
           <div className="flex-1" />
 
-          {/* ── Selected place card — sits just above the bottom sheet ── */}
-          {selectedPlace && (
-            <div className="flex-shrink-0 pointer-events-auto relative z-20">
+          {/* ── Bottom sheet: selected place card + places panel, rounded top ── */}
+          <div className="flex-shrink-0 pointer-events-auto relative z-20 rounded-t-2xl overflow-hidden shadow-[0_-6px_20px_rgba(0,0,0,0.12)]">
+
+            {selectedPlace && (
               <SelectedPlaceCard place={selectedPlace} onDismiss={() => setSelectedPlace(null)} />
-            </div>
-          )}
+            )}
 
-          {/* ── Places panel — bottom sheet, grows upward when opened ── */}
-          <div className="flex-shrink-0 pointer-events-auto relative z-20">
-
-            {/* Handle bar — toggles the list */}
+            {/* Handle bar — grab pill + summary, toggles the list */}
             <button
               onClick={() => setBottomOpen((v) => !v)}
-              className="w-full bg-white border-t border-slate-100 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] px-5 py-3 flex items-center justify-between"
+              aria-expanded={bottomOpen}
+              className={`w-full bg-white px-5 pt-2 pb-3 flex flex-col items-center gap-1.5 ${selectedPlace ? 'border-t border-slate-100' : ''}`}
             >
-              <div className="flex items-center gap-2 min-w-0">
-                {hasCenter ? (
-                  <>
-                    <span className="text-green-500 text-base flex-shrink-0">★</span>
-                    <span className="text-sm font-semibold text-slate-700 truncate">
-                      {nearbyPlaces.length > 0
-                        ? `${nearbyPlaces.length} place${nearbyPlaces.length !== 1 ? 's' : ''} nearby`
-                        : 'Center found'}
-                    </span>
-                    {centerAddress && (
-                      <span className="text-xs text-slate-400 truncate hidden xs:inline">{centerAddress}</span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-sm text-slate-400">Enter two locations above</span>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 text-slate-400 flex-shrink-0">
-                <span className="text-xs">{bottomOpen ? 'Hide' : 'Show'}</span>
-                <ChevronIcon open={bottomOpen} />
+              <div className="w-9 h-1 rounded-full bg-slate-300" />
+              <div className="w-full flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  {hasCenter ? (
+                    <>
+                      <span className="text-green-500 text-base flex-shrink-0">★</span>
+                      <span className="text-sm font-semibold text-slate-700 truncate">
+                        {nearbyPlaces.length > 0
+                          ? `${nearbyPlaces.length} place${nearbyPlaces.length !== 1 ? 's' : ''} nearby`
+                          : 'Center found'}
+                      </span>
+                      {centerAddress && (
+                        <span className="text-xs text-slate-400 truncate hidden xs:inline">{centerAddress}</span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-sm text-slate-400">Enter two locations above</span>
+                  )}
+                </div>
+                <span className="text-slate-400 flex-shrink-0"><ChevronIcon open={bottomOpen} /></span>
               </div>
             </button>
 
